@@ -1,0 +1,62 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "my-community-app",
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": {
+        "entry": "splash.html",
+        "height": "tall"
+      }
+    }
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "settings": {
+    "subreddit": {
+      "appFlair": {
+        "type": "string",
+        "label": "Top Apps post flair",
+        "helpText": "Only posts with this flair are ranked in Top Apps. Leave empty to rank every post.",
+        "placeholder": "App",
+        "defaultValue": "App"
+      },
+      "competitionFlair": {
+        "type": "string",
+        "label": "Photo competition post flair",
+        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest, Community Challenge). Changing it starts a new competition.",
+        "placeholder": "Photo Contest",
+        "defaultValue": "Photo Contest"
+      },
+      "singleVotePerCompetition": {
+        "type": "boolean",
+        "label": "One vote per user per competition",
+        "helpText": "When enabled each user can vote for only one photo. Otherwise users can vote once for each photo.",
+        "defaultValue": false
+      }
+    }
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Create community leaderboard post",
+        "description": "Top Apps rankings and Photo Competition",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/post-create"
+      }
+    ]
+  },
+  "triggers": {
+    "onAppInstall": "/internal/triggers/on-app-install"
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  },
+  "dev": {
+    "subreddit": "my_community_app_dev"
+  }
+}
