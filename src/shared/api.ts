@@ -5,19 +5,25 @@
 
 export type RankingPeriod = 'week' | 'month';
 
-export const RANKING_PERIODS: readonly RankingPeriod[] = ['week', 'month'];
-
 export const isRankingPeriod = (value: unknown): value is RankingPeriod =>
   value === 'week' || value === 'month';
 
-export type AppRanking = {
-  /** Reddit post ID (t3_...) of the post showcasing the app. */
+export type ConfigResponse = {
+  /** Subreddit the app is installed in; all posts are read from here. */
+  subreddit: string;
+  /** Moderator toggle: shows the Photo Competition tab when true. */
+  competitionEnabled: boolean;
+};
+
+export type ImageRanking = {
+  /** Reddit post ID (t3_...). */
   id: string;
-  name: string;
-  description: string;
+  title: string;
   author: string;
-  iconUrl: string | null;
-  /** Reddit upvote score of the showcase post. */
+  /** Author's snoovatar, or null when they don't have one. */
+  authorAvatarUrl: string | null;
+  imageUrl: string;
+  /** Reddit upvote score of the post. */
   score: number;
   commentCount: number;
   rank: number;
@@ -27,9 +33,8 @@ export type AppRanking = {
 
 export type RankingsResponse = {
   period: RankingPeriod;
-  /** Flair used to pick eligible posts, or null when every post is eligible. */
-  flair: string | null;
-  apps: AppRanking[];
+  subreddit: string;
+  images: ImageRanking[];
   generatedAt: string;
 };
 
@@ -63,9 +68,9 @@ export type ViewerVoteState = {
 };
 
 export type CompetitionResponse = {
-  flair: string;
-  /** When true each user gets a single vote across the whole competition. */
-  singleVote: boolean;
+  subreddit: string;
+  /** Entry flair, or null when every image post is an entry. */
+  flair: string | null;
   entries: CompetitionEntry[];
   viewer: ViewerVoteState;
 };
@@ -89,10 +94,10 @@ export type VoteResponse = {
 export type VoteErrorCode =
   | 'NOT_LOGGED_IN'
   | 'INVALID_REQUEST'
+  | 'COMPETITION_DISABLED'
   | 'NOT_ELIGIBLE'
   | 'OWN_ENTRY'
   | 'ALREADY_VOTED'
-  | 'VOTE_LIMIT_REACHED'
   | 'SERVER_ERROR';
 
 export type ErrorResponse = {

@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import type {
   CompetitionResponse,
+  ConfigResponse,
   ErrorResponse,
   RankingsResponse,
   VoteCountsResponse,
@@ -8,6 +10,8 @@ import type {
 } from '../../shared/api';
 import { isRankingPeriod } from '../../shared/api';
 import { getRankings } from '../core/rankings';
+import { getCommunitySettings } from '../core/settings';
+import { SOURCE_SUBREDDIT } from '../core/source';
 import {
   getCompetition,
   getVoteCounts,
@@ -17,13 +21,35 @@ import {
 
 export const api = new Hono();
 
-const serverError = (message: string): ErrorResponse => ({
-  status: 'error',
-  code: 'SERVER_ERROR',
-  message,
+/** Maps known errors to their status; anything else becomes a logged 500. */
+const handleError = (c: Context, error: unknown, fallback: string) => {
+  if (error instanceof VoteError) {
+    return c.json<ErrorResponse>(
+      { status: 'error', code: error.code, message: error.message },
+      error.httpStatus
+    );
+  }
+  console.error(fallback, error);
+  return c.json<ErrorResponse>(
+    { status: 'error', code: 'SERVER_ERROR', message: fallback },
+    500
+  );
+};
+
+/** GET /api/config – which sections the client should show. */
+api.get('/config', async (c) => {
+  try {
+    const { competitionEnabled } = await getCommunitySettings();
+    return c.json<ConfigResponse>({
+      subreddit: SOURCE_SUBREDDIT,
+      competitionEnabled,
+    });
+  } catch (error) {
+    return handleError(c, error, 'Could not load settings.');
+  }
 });
 
-/** GET /api/rankings?period=week|month */
+/** GET /api/rankings?period=week|month – top 10 image posts. */
 api.get('/rankings', async (c) => {
   const period = c.req.query('period') ?? 'week';
   if (!isRankingPeriod(period)) {
@@ -40,8 +66,7 @@ api.get('/rankings', async (c) => {
   try {
     return c.json<RankingsResponse>(await getRankings(period));
   } catch (error) {
-    console.error(`Failed to load ${period} rankings`, error);
-    return c.json<ErrorResponse>(serverError('Could not load rankings.'), 500);
+    return handleError(c, error, 'Could not load top images.');
   }
 });
 
@@ -50,11 +75,7 @@ api.get('/competition', async (c) => {
   try {
     return c.json<CompetitionResponse>(await getCompetition());
   } catch (error) {
-    console.error('Failed to load competition', error);
-    return c.json<ErrorResponse>(
-      serverError('Could not load competition entries.'),
-      500
-    );
+    return handleError(c, error, 'Could not load competition entries.');
   }
 });
 
@@ -63,8 +84,7 @@ api.get('/competition/votes', async (c) => {
   try {
     return c.json<VoteCountsResponse>(await getVoteCounts());
   } catch (error) {
-    console.error('Failed to load vote counts', error);
-    return c.json<ErrorResponse>(serverError('Could not load votes.'), 500);
+    return handleError(c, error, 'Could not load votes.');
   }
 });
 
@@ -84,16 +104,10 @@ api.post('/competition/vote', async (c) => {
   try {
     return c.json<VoteResponse>(await submitVote(postId));
   } catch (error) {
-    if (error instanceof VoteError) {
-      return c.json<ErrorResponse>(
-        { status: 'error', code: error.code, message: error.message },
-        error.httpStatus
-      );
-    }
-    console.error('Failed to record vote', error);
-    return c.json<ErrorResponse>(
-      serverError('Your vote could not be recorded. Please try again.'),
-      500
+    return handleError(
+      c,
+      error,
+      'Your vote could not be recorded. Please try again.'
     );
   }
 });

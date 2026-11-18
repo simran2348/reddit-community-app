@@ -12,6 +12,7 @@ import type {
 import { cached, keySlug } from './cache';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
 import { flairMatches, getCommunitySettings } from './settings';
+import { isFromSourceSubreddit, SOURCE_SUBREDDIT } from './source';
 
 const SCAN_LIMIT = 100;
 const ENTRIES_CACHE_TTL_SECONDS = 5 * 60;
@@ -22,16 +23,19 @@ type CachedEntry = Omit<CompetitionEntry, 'voteCount'> & {
   authorId: string | null;
 };
 
+/** null means every image post in the subreddit is an entry. */
+type Flair = string | null;
+
 /**
  * Redis keys are scoped by flair, so changing the competition flair starts a
- * fresh competition without touching the votes of the previous one.
+ * fresh competition without touching the votes of the previous one. The source
+ * subreddit is included so switching it also starts fresh.
  */
-const keys = (flair: string) => {
-  const scope = `competition:${keySlug(flair)}`;
+const keys = (flair: Flair) => {
+  const scope = `competition:${keySlug(SOURCE_SUBREDDIT)}:${keySlug(flair ?? 'all')}`;
   return {
     entries: `${scope}:entries`,
     counts: `${scope}:counts`,
-    ballot: `${scope}:ballot`,
     userVotes: (userId: string) => `${scope}:user:${userId}`,
   };
 };
@@ -51,13 +55,26 @@ export class VoteError extends Error {
   }
 }
 
-const isEligiblePost = (post: Post, flair: string): boolean =>
-  post.subredditId === context.subredditId &&
+/** Reads settings and fails if moderators have switched the competition off. */
+const requireCompetition = async (): Promise<Flair> => {
+  const { competitionEnabled, competitionFlair } = await getCommunitySettings();
+  if (!competitionEnabled) {
+    throw new VoteError(
+      'COMPETITION_DISABLED',
+      'The photo competition is not running right now.',
+      403
+    );
+  }
+  return competitionFlair;
+};
+
+const isEligiblePost = (post: Post, flair: Flair): boolean =>
+  isFromSourceSubreddit(post.subredditName) &&
   !isHiddenPost(post) &&
   flairMatches(post.flair?.text, flair) &&
   getPostImage(post) !== null;
 
-const toCachedEntry = (post: Post, flair: string): CachedEntry | null => {
+const toCachedEntry = (post: Post): CachedEntry | null => {
   const image = getPostImage(post);
   if (!image) return null;
   return {
@@ -68,29 +85,32 @@ const toCachedEntry = (post: Post, flair: string): CachedEntry | null => {
     imageUrl: image.url,
     imageWidth: image.width,
     imageHeight: image.height,
-    flair: post.flair?.text ?? flair,
+    flair: post.flair?.text ?? '',
     createdAt: post.createdAt.toISOString(),
     postUrl: toPostUrl(post),
   };
 };
 
-const loadEntries = async (flair: string): Promise<CachedEntry[]> => {
+const loadEntries = async (flair: Flair): Promise<CachedEntry[]> => {
   const posts = await reddit
-    .getNewPosts({ subredditName: context.subredditName, limit: SCAN_LIMIT })
+    .getNewPosts({ subredditName: SOURCE_SUBREDDIT, limit: SCAN_LIMIT })
     .all();
 
   return posts
     .filter((post) => isEligiblePost(post, flair))
-    .map((post) => toCachedEntry(post, flair))
+    .map(toCachedEntry)
     .filter((entry): entry is CachedEntry => entry !== null);
 };
 
-const getCachedEntries = (flair: string): Promise<CachedEntry[]> =>
-  cached(keys(flair).entries, ENTRIES_CACHE_TTL_SECONDS, () =>
-    loadEntries(flair)
+const getCachedEntries = (flair: Flair): Promise<CachedEntry[]> =>
+  cached(
+    keys(flair).entries,
+    ENTRIES_CACHE_TTL_SECONDS,
+    () => loadEntries(flair),
+    (entries) => entries.length > 0
   );
 
-const readCounts = async (flair: string): Promise<Record<string, number>> => {
+const readCounts = async (flair: Flair): Promise<Record<string, number>> => {
   const raw = await redis.hGetAll(keys(flair).counts);
   const counts: Record<string, number> = {};
   for (const [postId, value] of Object.entries(raw)) {
@@ -101,7 +121,7 @@ const readCounts = async (flair: string): Promise<Record<string, number>> => {
 };
 
 const readViewer = async (
-  flair: string,
+  flair: Flair,
   entries: CachedEntry[]
 ): Promise<ViewerVoteState> => {
   const { userId } = context;
@@ -119,11 +139,11 @@ const readViewer = async (
 };
 
 export const getCompetition = async (): Promise<CompetitionResponse> => {
-  const { competitionFlair, singleVote } = await getCommunitySettings();
-  const cachedEntries = await getCachedEntries(competitionFlair);
+  const flair = await requireCompetition();
+  const cachedEntries = await getCachedEntries(flair);
   const [counts, viewer] = await Promise.all([
-    readCounts(competitionFlair),
-    readViewer(competitionFlair, cachedEntries),
+    readCounts(flair),
+    readViewer(flair, cachedEntries),
   ]);
 
   const entries: CompetitionEntry[] = cachedEntries.map(
@@ -133,28 +153,30 @@ export const getCompetition = async (): Promise<CompetitionResponse> => {
     })
   );
 
-  return { flair: competitionFlair, singleVote, entries, viewer };
+  return { subreddit: SOURCE_SUBREDDIT, flair, entries, viewer };
 };
 
 export const getVoteCounts = async (): Promise<VoteCountsResponse> => {
-  const { competitionFlair } = await getCommunitySettings();
-  const cachedEntries = await getCachedEntries(competitionFlair);
+  const flair = await requireCompetition();
+  const cachedEntries = await getCachedEntries(flair);
   const [counts, viewer] = await Promise.all([
-    readCounts(competitionFlair),
-    readViewer(competitionFlair, cachedEntries),
+    readCounts(flair),
+    readViewer(flair, cachedEntries),
   ]);
   return { counts, viewer };
 };
 
 /**
  * Records a vote. Every rule is enforced here on the server:
+ * - the competition must be enabled in the subreddit settings,
  * - the voter must be logged in (identity comes from the Devvit context),
- * - the post must currently be an eligible entry for the configured flair,
+ * - the post must currently be an eligible entry,
  * - users cannot vote for their own photo,
- * - one vote per user per entry (atomic HSETNX on the user's vote hash),
- * - optionally one vote per user per competition (atomic HSETNX on a ballot).
+ * - one vote per user per entry (atomic HSETNX on the user's vote hash).
  */
 export const submitVote = async (postId: unknown): Promise<VoteResponse> => {
+  const flair = await requireCompetition();
+
   const { userId } = context;
   if (!userId) {
     throw new VoteError('NOT_LOGGED_IN', 'Log in to Reddit to vote.', 401);
@@ -167,16 +189,13 @@ export const submitVote = async (postId: unknown): Promise<VoteResponse> => {
     throw new VoteError('INVALID_REQUEST', 'Invalid entry.', 400);
   }
 
-  const { competitionFlair, singleVote } = await getCommunitySettings();
-  const k = keys(competitionFlair);
-
   let post: Post;
   try {
     post = await reddit.getPostById(postId);
   } catch {
     throw new VoteError('NOT_ELIGIBLE', 'This entry no longer exists.', 403);
   }
-  if (!isEligiblePost(post, competitionFlair) || post.archived) {
+  if (!isEligiblePost(post, flair) || post.archived) {
     throw new VoteError(
       'NOT_ELIGIBLE',
       'This post is not part of the current competition.',
@@ -184,34 +203,10 @@ export const submitVote = async (postId: unknown): Promise<VoteResponse> => {
     );
   }
   if (post.authorId === userId) {
-    throw new VoteError(
-      'OWN_ENTRY',
-      "You can't vote for your own photo.",
-      403
-    );
+    throw new VoteError('OWN_ENTRY', "You can't vote for your own photo.", 403);
   }
 
-  let claimedBallot = false;
-  if (singleVote) {
-    const claimed = await redis.hSetNX(k.ballot, userId, post.id);
-    if (claimed === 0) {
-      const existing = await redis.hGet(k.ballot, userId);
-      if (existing === post.id) {
-        throw new VoteError(
-          'ALREADY_VOTED',
-          'You already voted for this photo.',
-          409
-        );
-      }
-      throw new VoteError(
-        'VOTE_LIMIT_REACHED',
-        'You have already used your vote in this competition.',
-        409
-      );
-    }
-    claimedBallot = true;
-  }
-
+  const k = keys(flair);
   const userVotesKey = k.userVotes(userId);
   const recorded = await redis.hSetNX(
     userVotesKey,
@@ -230,13 +225,12 @@ export const submitVote = async (postId: unknown): Promise<VoteResponse> => {
   try {
     voteCount = await redis.hIncrBy(k.counts, post.id, 1);
   } catch (error) {
-    // Roll back the vote markers so the user can retry.
+    // Roll back the vote marker so the user can retry.
     await redis.hDel(userVotesKey, [post.id]);
-    if (claimedBallot) await redis.hDel(k.ballot, [userId]);
     throw error;
   }
 
-  const entries = await getCachedEntries(competitionFlair);
-  const viewer = await readViewer(competitionFlair, entries);
+  const entries = await getCachedEntries(flair);
+  const viewer = await readViewer(flair, entries);
   return { status: 'ok', postId: post.id, voteCount, viewer };
 };

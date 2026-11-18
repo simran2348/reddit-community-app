@@ -1,42 +1,37 @@
 import { settings } from '@devvit/web/server';
 
 export type CommunitySettings = {
-  /** Flair for app showcase posts; null means every post is eligible. */
-  appFlair: string | null;
-  competitionFlair: string;
-  singleVote: boolean;
-};
-
-const DEFAULT_COMPETITION_FLAIR = 'Photo Contest';
-
-const readString = async (name: string): Promise<string | null> => {
-  const value = await settings.get<string>(name);
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  competitionEnabled: boolean;
+  /** Flair for competition entries; null means every image post is eligible. */
+  competitionFlair: string | null;
 };
 
 export const getCommunitySettings = async (): Promise<CommunitySettings> => {
-  const [appFlair, competitionFlair, singleVote] = await Promise.all([
-    readString('appFlair'),
-    readString('competitionFlair'),
-    settings.get<boolean>('singleVotePerCompetition'),
+  const [competitionEnabled, competitionFlair] = await Promise.all([
+    settings.get<boolean>('competitionEnabled'),
+    settings.get<string>('competitionFlair'),
   ]);
 
+  const flair =
+    typeof competitionFlair === 'string' ? competitionFlair.trim() : '';
+
   return {
-    appFlair,
-    competitionFlair: competitionFlair ?? DEFAULT_COMPETITION_FLAIR,
-    singleVote: singleVote === true,
+    competitionEnabled: competitionEnabled === true,
+    competitionFlair: flair.length > 0 ? flair : null,
   };
 };
 
-/** Case- and whitespace-insensitive flair comparison. */
+/**
+ * Case- and whitespace-insensitive flair comparison. A null configured flair
+ * matches every post.
+ */
 export const flairMatches = (
   postFlair: string | undefined,
-  configured: string
+  configured: string | null
 ): boolean =>
-  typeof postFlair === 'string' &&
-  normalizeFlair(postFlair) === normalizeFlair(configured);
+  configured === null ||
+  (typeof postFlair === 'string' &&
+    normalizeFlair(postFlair) === normalizeFlair(configured));
 
-export const normalizeFlair = (flair: string): string =>
+const normalizeFlair = (flair: string): string =>
   flair.trim().replace(/\s+/g, ' ').toLowerCase();

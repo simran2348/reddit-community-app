@@ -7,7 +7,9 @@ import { redis } from '@devvit/web/server';
 export const cached = async <T>(
   key: string,
   ttlSeconds: number,
-  load: () => Promise<T>
+  load: () => Promise<T>,
+  /** Return false to skip caching a result (e.g. empty listings). */
+  shouldCache: (value: T) => boolean = () => true
 ): Promise<T> => {
   try {
     const hit = await redis.get(key);
@@ -20,6 +22,7 @@ export const cached = async <T>(
   }
 
   const value = await load();
+  if (!shouldCache(value)) return value;
 
   try {
     await redis.set(key, JSON.stringify(value), {

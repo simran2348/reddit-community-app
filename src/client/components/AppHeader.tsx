@@ -13,9 +13,7 @@ export const AppHeader = memo(({ subredditName }: AppHeaderProps) => (
       <h1 className="app-header__title">
         {subredditName ? `r/${subredditName}` : 'Community'} Leaderboard
       </h1>
-      <p className="app-header__subtitle">
-        Top community apps &amp; photo picks
-      </p>
+      <p className="app-header__subtitle">Top images of the week &amp; month</p>
     </div>
   </header>
 ));

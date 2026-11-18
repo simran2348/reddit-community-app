@@ -1,19 +1,13 @@
 import { memo } from 'react';
 
 export type VoteButtonState =
-  | 'ready'
-  | 'pending'
-  | 'voted'
-  | 'own'
-  | 'used'
-  | 'logged-out';
+  'ready' | 'pending' | 'voted' | 'own' | 'logged-out';
 
 const LABELS: Record<VoteButtonState, string> = {
   ready: 'Vote',
   pending: 'Voting…',
   voted: '✓ Voted',
   own: 'Your entry',
-  used: 'Vote used',
   'logged-out': 'Log in to vote',
 };
 

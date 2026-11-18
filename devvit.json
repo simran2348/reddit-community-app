@@ -16,25 +16,18 @@
   },
   "settings": {
     "subreddit": {
-      "appFlair": {
-        "type": "string",
-        "label": "Top Apps post flair",
-        "helpText": "Only posts with this flair are ranked in Top Apps. Leave empty to rank every post.",
-        "placeholder": "App",
-        "defaultValue": "App"
+      "competitionEnabled": {
+        "type": "boolean",
+        "label": "Enable photo competition",
+        "helpText": "Shows the Photo Competition tab so members can vote on photos.",
+        "defaultValue": false
       },
       "competitionFlair": {
         "type": "string",
         "label": "Photo competition post flair",
-        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest, Community Challenge). Changing it starts a new competition.",
+        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition.",
         "placeholder": "Photo Contest",
         "defaultValue": "Photo Contest"
-      },
-      "singleVotePerCompetition": {
-        "type": "boolean",
-        "label": "One vote per user per competition",
-        "helpText": "When enabled each user can vote for only one photo. Otherwise users can vote once for each photo.",
-        "defaultValue": false
       }
     }
   },
@@ -42,7 +35,7 @@
     "items": [
       {
         "label": "Create community leaderboard post",
-        "description": "Top Apps rankings and Photo Competition",
+        "description": "Top images of the week/month and photo competition",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"

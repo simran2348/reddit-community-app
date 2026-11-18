@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-export type Section = 'apps' | 'competition';
+export type Section = 'images' | 'competition';
 
 type MainNavigationProps = {
   active: Section;
@@ -8,7 +8,7 @@ type MainNavigationProps = {
 };
 
 const SECTIONS: readonly { id: Section; icon: string; label: string }[] = [
-  { id: 'apps', icon: '🏆', label: 'Top Apps' },
+  { id: 'images', icon: '🏆', label: 'Top Images' },
   { id: 'competition', icon: '📸', label: 'Photo Competition' },
 ];
 

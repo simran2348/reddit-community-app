@@ -1,7 +1,4 @@
-import type {
-  CompetitionResponse,
-  VoteCountsResponse,
-} from '../../shared/api';
+import type { CompetitionResponse, VoteCountsResponse } from '../../shared/api';
 import { requestJson } from './http';
 
 export const fetchCompetition = (): Promise<CompetitionResponse> =>

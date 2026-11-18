@@ -6,6 +6,7 @@ import type {
   ViewerVoteState,
 } from '../../shared/api';
 import { CompetitionCarousel } from '../components/CompetitionCarousel';
+import { SettingsButton } from '../components/SettingsButton';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import type { VoteButtonState } from '../components/VoteButton';
 import {
@@ -23,6 +24,7 @@ type LoadState =
 type CompetitionScreenProps = {
   /** True while this tab is visible; used to refresh live vote counts. */
   isActive: boolean;
+  onOpenSettings: () => void;
 };
 
 const applyCounts = (
@@ -38,7 +40,10 @@ const applyCounts = (
   })),
 });
 
-export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
+export const CompetitionScreen = ({
+  isActive,
+  onOpenSettings,
+}: CompetitionScreenProps) => {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -118,11 +123,7 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
           error instanceof Error ? error.message : 'Vote failed. Try again.';
         showToast(message);
         // The server is the source of truth: re-sync after a rejected vote.
-        if (
-          error instanceof ApiError &&
-          (error.code === 'ALREADY_VOTED' ||
-            error.code === 'VOTE_LIMIT_REACHED')
-        ) {
+        if (error instanceof ApiError && error.code === 'ALREADY_VOTED') {
           await refreshCounts();
         }
       } finally {
@@ -142,12 +143,11 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
   const getVoteState = useCallback(
     (entry: CompetitionEntry): VoteButtonState => {
       if (!data) return 'ready';
-      const { viewer, singleVote } = data;
+      const { viewer } = data;
       if (pendingId === entry.id) return 'pending';
       if (viewer.votedPostIds.includes(entry.id)) return 'voted';
       if (!viewer.isLoggedIn) return 'logged-out';
       if (viewer.ownPostIds.includes(entry.id)) return 'own';
-      if (singleVote && viewer.votedPostIds.length > 0) return 'used';
       return 'ready';
     },
     [data, pendingId]
@@ -160,6 +160,11 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
       role="tabpanel"
       aria-labelledby="tab-competition"
     >
+      <div className="screen__toolbar">
+        <p className="screen__heading">Vote for your favourite photo</p>
+        <SettingsButton onClick={onOpenSettings} />
+      </div>
+
       <div className="screen__body">
         {state.status === 'loading' && <LoadingState label="Loading entries" />}
         {state.status === 'error' && (
@@ -169,7 +174,11 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
           <EmptyState
             icon="📸"
             title="No entries yet"
-            message={`Submit an image post with the "${data.flair}" flair to enter.`}
+            message={
+              data.flair
+                ? `Submit an image post with the "${data.flair}" flair in r/${data.subreddit} to enter.`
+                : `No recent image posts in r/${data.subreddit}.`
+            }
           />
         )}
         {data && data.entries.length > 0 && (
@@ -177,11 +186,6 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
             entries={data.entries}
             getVoteState={getVoteState}
             onVote={onVote}
-            info={
-              data.singleVote
-                ? `"${data.flair}" photos · one vote per person for the whole competition.`
-                : `"${data.flair}" photos · one vote per person per photo.`
-            }
           />
         )}
       </div>

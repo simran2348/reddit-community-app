@@ -1,43 +1,30 @@
-import { context, reddit } from '@devvit/web/server';
+import { reddit } from '@devvit/web/server';
 import type { Post } from '@devvit/web/server';
 import type {
-  AppRanking,
+  ImageRanking,
   RankingPeriod,
   RankingsResponse,
 } from '../../shared/api';
-import { cached, keySlug } from './cache';
+import { cached } from './cache';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
-import { flairMatches, getCommunitySettings } from './settings';
+import { SOURCE_SUBREDDIT } from './source';
 
 const TOP_COUNT = 10;
 const SCAN_LIMIT = 100;
 const CACHE_TTL_SECONDS = 10 * 60;
-const DESCRIPTION_LENGTH = 160;
-
-/** Turns a markdown post body into a short plain-text description. */
-const summarize = (body: string | undefined): string => {
-  if (!body) return '';
-  const text = body
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/[#>*_`~|-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return text.length > DESCRIPTION_LENGTH
-    ? `${text.slice(0, DESCRIPTION_LENGTH - 1).trimEnd()}…`
-    : text;
-};
 
 const toRanking = (
   post: Post,
+  imageUrl: string,
+  authorAvatarUrl: string | null,
   rank: number,
   period: RankingPeriod
-): AppRanking => ({
+): ImageRanking => ({
   id: post.id,
-  name: post.title,
-  description: summarize(post.body),
+  title: post.title,
   author: post.authorName,
-  iconUrl: getPostImage(post)?.url ?? null,
+  authorAvatarUrl,
+  imageUrl,
   score: post.score,
   commentCount: post.numberOfComments,
   rank,
@@ -45,42 +32,59 @@ const toRanking = (
   postUrl: toPostUrl(post),
 });
 
+/** Author snoovatar; null for deleted users, no avatar, or lookup errors. */
+const getAvatarUrl = async (username: string): Promise<string | null> => {
+  if (!username || username === '[deleted]') return null;
+  try {
+    const url = await reddit.getSnoovatarUrl(username);
+    return url && url.startsWith('https://') ? url : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Top image posts in the subreddit for the period, ranked by upvotes. */
 const loadRankings = async (
-  subredditName: string,
-  period: RankingPeriod,
-  flair: string | null
+  subreddit: string,
+  period: RankingPeriod
 ): Promise<RankingsResponse> => {
   const posts = await reddit
-    .getTopPosts({ subredditName, timeframe: period, limit: SCAN_LIMIT })
+    .getTopPosts({ subredditName: subreddit, timeframe: period, limit: SCAN_LIMIT })
     .all();
 
-  const apps = posts
-    .filter(
-      (post) =>
-        !isHiddenPost(post) &&
-        !post.stickied &&
-        post.id !== context.postId &&
-        (flair === null || flairMatches(post.flair?.text, flair))
-    )
-    .sort((a, b) => b.score - a.score)
-    .slice(0, TOP_COUNT)
-    .map((post, index) => toRanking(post, index + 1, period));
+  const top: { post: Post; imageUrl: string }[] = [];
+  const sorted = posts
+    .filter((post) => !isHiddenPost(post) && !post.stickied)
+    .sort((a, b) => b.score - a.score);
+
+  for (const post of sorted) {
+    if (top.length >= TOP_COUNT) break;
+    const image = getPostImage(post);
+    if (image) top.push({ post, imageUrl: image.url });
+  }
+
+  const avatars = await Promise.all(
+    top.map(({ post }) => getAvatarUrl(post.authorName))
+  );
+
+  const images = top.map(({ post, imageUrl }, i) =>
+    toRanking(post, imageUrl, avatars[i] ?? null, i + 1, period)
+  );
 
   return {
     period,
-    flair,
-    apps,
+    subreddit,
+    images,
     generatedAt: new Date().toISOString(),
   };
 };
 
-export const getRankings = async (
-  period: RankingPeriod
-): Promise<RankingsResponse> => {
-  const { subredditName } = context;
-  const { appFlair } = await getCommunitySettings();
-  const key = `rankings:${period}:${keySlug(appFlair ?? 'all')}`;
-  return cached(key, CACHE_TTL_SECONDS, () =>
-    loadRankings(subredditName, period, appFlair)
+export const getRankings = (period: RankingPeriod): Promise<RankingsResponse> => {
+  const subreddit = SOURCE_SUBREDDIT;
+  return cached(
+    `rankings:images:v2:${subreddit.toLowerCase()}:${period}`,
+    CACHE_TTL_SECONDS,
+    () => loadRankings(subreddit, period),
+    (result) => result.images.length > 0
   );
 };
