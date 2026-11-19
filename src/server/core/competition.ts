@@ -10,11 +10,17 @@ import type {
   ViewerVoteState,
 } from '../../shared/api';
 import { cached, keySlug } from './cache';
-import { getPostImage, isHiddenPost, toPostUrl } from './media';
+import { getPostImage, hiddenReason, isHiddenPost, toPostUrl } from './media';
 import { flairMatches, getCommunitySettings } from './settings';
 import { isFromSourceSubreddit, SOURCE_SUBREDDIT } from './source';
 
-const SCAN_LIMIT = 100;
+/**
+ * How far back to look for entries: Reddit listings page back through about
+ * the 1,000 newest posts (10 requests of 100, cached for 5 minutes). Reddit
+ * search can't be used instead: it doesn't match flairs written with emoji or
+ * decorative Unicode letters, which competition flairs often use.
+ */
+const SCAN_LIMIT = 1000;
 const ENTRIES_CACHE_TTL_SECONDS = 5 * 60;
 const POST_ID_PATTERN = /^t3_[a-z0-9]+$/i;
 
@@ -34,7 +40,7 @@ type Flair = string | null;
 const keys = (flair: Flair) => {
   const scope = `competition:${keySlug(SOURCE_SUBREDDIT)}:${keySlug(flair ?? 'all')}`;
   return {
-    entries: `${scope}:entries`,
+    entries: `${scope}:entries:v4`,
     counts: `${scope}:counts`,
     userVotes: (userId: string) => `${scope}:user:${userId}`,
   };
@@ -91,13 +97,48 @@ const toCachedEntry = (post: Post): CachedEntry | null => {
   };
 };
 
+/**
+ * Logs how many posts were scanned and why candidates were dropped, so a
+ * missing entry can be explained from `devvit logs`.
+ */
+const logEntryDiagnostics = (flair: Flair, posts: Post[]): void => {
+  const flairsSeen = new Map<string, number>();
+  const dropped: string[] = [];
+  let eligible = 0;
+  for (const post of posts) {
+    const text = post.flair?.text ?? '(no flair)';
+    flairsSeen.set(text, (flairsSeen.get(text) ?? 0) + 1);
+    if (!flairMatches(post.flair?.text, flair)) continue;
+    const reason =
+      hiddenReason(post) ??
+      (getPostImage(post) === null ? 'no image found' : null);
+    if (reason) dropped.push(`${post.id} "${post.title}" → ${reason}`);
+    else eligible += 1;
+  }
+  console.log(
+    `[competition] r/${SOURCE_SUBREDDIT} flair=${JSON.stringify(flair)} ` +
+      `scanned=${posts.length} eligible=${eligible}`
+  );
+  console.log(
+    `[competition] flairs seen: ${JSON.stringify(Object.fromEntries(flairsSeen))}`
+  );
+  if (dropped.length > 0) {
+    console.log(
+      `[competition] flair matched but dropped:\n${dropped.join('\n')}`
+    );
+  }
+};
+
 const loadEntries = async (flair: Flair): Promise<CachedEntry[]> => {
   const posts = await reddit
     .getNewPosts({ subredditName: SOURCE_SUBREDDIT, limit: SCAN_LIMIT })
     .all();
 
+  logEntryDiagnostics(flair, posts);
+
   return posts
     .filter((post) => isEligiblePost(post, flair))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map(toCachedEntry)
     .filter((entry): entry is CachedEntry => entry !== null);
 };

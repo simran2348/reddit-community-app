@@ -1,63 +1,29 @@
-import { memo, useEffect, useRef } from 'react';
-import type { ImageLayout } from '../preferences';
+import { memo, useEffect, useId, useRef } from 'react';
+import type { RankingPeriod } from '../../shared/api';
+import { AUTOPLAY_OPTIONS } from '../preferences';
+import type { Preferences } from '../preferences';
 
 type SettingsPanelProps = {
   open: boolean;
   onClose: () => void;
-  layout: ImageLayout;
-  onLayoutChange: (layout: ImageLayout) => void;
-  subreddit: string | undefined;
-  competitionEnabled: boolean;
+  prefs: Preferences;
+  onChange: (changes: Partial<Preferences>) => void;
 };
 
-const LAYOUTS: readonly {
-  value: ImageLayout;
-  title: string;
-  description: string;
-}[] = [
-  {
-    value: 'overlay',
-    title: 'Details on image',
-    description: 'Avatar, title, upvotes and comments over the photo.',
-  },
-  {
-    value: 'reveal',
-    title: 'Swipe up to reveal',
-    description: 'Swipe the photo up (or tap ↑) to see details below it.',
-  },
+const PERIODS: readonly { value: RankingPeriod; label: string }[] = [
+  { value: 'week', label: 'This week' },
+  { value: 'month', label: 'This month' },
+  { value: 'year', label: 'This year' },
 ];
-
-/** Tiny illustration of each layout for the option cards. */
-const LayoutPreview = ({ layout }: { layout: ImageLayout }) => (
-  <span
-    className={`layout-preview layout-preview--${layout}`}
-    aria-hidden="true"
-  >
-    <span className="layout-preview__details">
-      <span className="layout-preview__dot" />
-      <span className="layout-preview__lines">
-        <span />
-        <span />
-      </span>
-    </span>
-    <span className="layout-preview__photo" />
-  </span>
-);
 
 /**
  * Full-height settings screen that slides in over the dashboard (inside the
  * splash box; it never navigates or opens expanded mode).
  */
 export const SettingsPanel = memo(
-  ({
-    open,
-    onClose,
-    layout,
-    onLayoutChange,
-    subreddit,
-    competitionEnabled,
-  }: SettingsPanelProps) => {
+  ({ open, onClose, prefs, onChange }: SettingsPanelProps) => {
     const closeRef = useRef<HTMLButtonElement>(null);
+    const autoplayId = useId();
 
     useEffect(() => {
       if (!open) return;
@@ -68,8 +34,6 @@ export const SettingsPanel = memo(
       document.addEventListener('keydown', onKeyDown);
       return () => document.removeEventListener('keydown', onKeyDown);
     }, [open, onClose]);
-
-    const where = subreddit ? ` in r/${subreddit}` : '';
 
     return (
       <div
@@ -107,44 +71,76 @@ export const SettingsPanel = memo(
 
         <div className="settings__body">
           <section className="settings__section">
-            <h3 className="settings__heading">About</h3>
-            <p className="settings__text">
-              Top posts shows the 10 most upvoted image posts{where} from this
-              week or this month. Rankings refresh every 10 minutes.
-            </p>
-            {competitionEnabled && (
-              <p className="settings__text">
-                In the Photo Competition you get one vote per photo and can't
-                vote for your own.
-              </p>
-            )}
-          </section>
-
-          <section className="settings__section">
-            <h3 className="settings__heading" id="layout-heading">
-              Image layout
+            <h3 className="settings__heading" id="period-heading">
+              Top posts
             </h3>
             <div
-              className="layout-options"
+              className="toggle-group"
               role="radiogroup"
-              aria-labelledby="layout-heading"
+              aria-labelledby="period-heading"
             >
-              {LAYOUTS.map((option) => {
-                const selected = layout === option.value;
+              {PERIODS.map((option) => {
+                const selected = prefs.period === option.value;
                 return (
                   <button
                     key={option.value}
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    className={`layout-option${selected ? ' is-selected' : ''}`}
-                    onClick={() => onLayoutChange(option.value)}
+                    className={`toggle-group__option${selected ? ' is-selected' : ''}`}
+                    onClick={() => onChange({ period: option.value })}
                   >
-                    <LayoutPreview layout={option.value} />
-                    <span className="layout-option__title">{option.title}</span>
-                    <span className="layout-option__description">
-                      {option.description}
-                    </span>
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="settings__section">
+            <h3 className="settings__heading">Carousel</h3>
+            <label className="checkbox" htmlFor={autoplayId}>
+              <input
+                id={autoplayId}
+                type="checkbox"
+                className="checkbox__input"
+                checked={prefs.autoplay}
+                onChange={(event) =>
+                  onChange({ autoplay: event.target.checked })
+                }
+              />
+              <span className="checkbox__box" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M5 12.5l4.5 4.5L19 7.5"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span className="checkbox__label">Auto-play images</span>
+            </label>
+            <div
+              className={`toggle-group toggle-group--small${prefs.autoplay ? '' : ' is-disabled'}`}
+              role="radiogroup"
+              aria-label="Auto-play interval"
+              aria-disabled={!prefs.autoplay}
+            >
+              {AUTOPLAY_OPTIONS.map((seconds) => {
+                const selected = prefs.autoplaySeconds === seconds;
+                return (
+                  <button
+                    key={seconds}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={!prefs.autoplay}
+                    className={`toggle-group__option${selected ? ' is-selected' : ''}`}
+                    onClick={() => onChange({ autoplaySeconds: seconds })}
+                  >
+                    Every {seconds} sec
                   </button>
                 );
               })}

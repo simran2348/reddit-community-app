@@ -20,7 +20,7 @@ const isFailedMedia = (status: unknown): boolean => {
   return value === '2' || value === 'GALLERY_MEDIA_STATUS_FAILED';
 };
 
-const IMAGE_EXTENSION =/\.(jpe?g|png|gif|webp)(\?.*)?$/i;
+const IMAGE_EXTENSION = /\.(jpe?g|png|gif|webp)(\?.*)?$/i;
 
 /**
  * Picks the best displayable image for a post: the first valid gallery/preview
@@ -56,9 +56,21 @@ export const getPostImage = (post: Post): PostImage | null => {
   return null;
 };
 
-/** Posts that should never be surfaced in the dashboard. */
+/**
+ * Posts that should never be surfaced in the dashboard. `post.hidden` is not
+ * checked: it's a per-account "hide" preference, not a moderation state.
+ */
 export const isHiddenPost = (post: Post): boolean =>
-  post.removed || post.spam || post.nsfw || post.quarantined || post.hidden;
+  post.removed || post.spam || post.nsfw || post.quarantined;
+
+/** Why a post was excluded, for diagnostics; null when it's displayable. */
+export const hiddenReason = (post: Post): string | null => {
+  if (post.removed) return 'removed';
+  if (post.spam) return 'spam';
+  if (post.nsfw) return 'nsfw';
+  if (post.quarantined) return 'quarantined';
+  return null;
+};
 
 export const toPostUrl = (post: Post): string =>
   `https://www.reddit.com${post.permalink}`;

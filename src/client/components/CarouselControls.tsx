@@ -1,8 +1,8 @@
 import { memo } from 'react';
 
 type CarouselControlsProps = {
-  index: number;
-  count: number;
+  canPrev: boolean;
+  canNext: boolean;
   onPrev: () => void;
   onNext: () => void;
   label: string;
@@ -26,13 +26,13 @@ const Chevron = ({ direction }: { direction: 'left' | 'right' }) => (
 
 /** Arrow buttons overlaid on the left/right edges of the image stage. */
 export const CarouselControls = memo(
-  ({ index, count, onPrev, onNext, label }: CarouselControlsProps) => (
+  ({ canPrev, canNext, onPrev, onNext, label }: CarouselControlsProps) => (
     <>
       <button
         type="button"
         className="carousel-nav carousel-nav--prev"
         onClick={onPrev}
-        disabled={index <= 0}
+        disabled={!canPrev}
         aria-label={`Previous ${label}`}
       >
         <Chevron direction="left" />
@@ -41,7 +41,7 @@ export const CarouselControls = memo(
         type="button"
         className="carousel-nav carousel-nav--next"
         onClick={onNext}
-        disabled={index >= count - 1}
+        disabled={!canNext}
         aria-label={`Next ${label}`}
       >
         <Chevron direction="right" />

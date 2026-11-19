@@ -32,6 +32,9 @@ export const LoadingState = memo(({ label }: { label: string }) => (
                 aria-hidden="true"
               >
                 <span className="skeleton-card" />
+                {position === 'active' && (
+                  <span className="card-position skeleton-position" />
+                )}
               </li>
             );
           })}
@@ -40,7 +43,6 @@ export const LoadingState = memo(({ label }: { label: string }) => (
       <span className="carousel-nav carousel-nav--prev is-skeleton" />
       <span className="carousel-nav carousel-nav--next is-skeleton" />
     </div>
-    <span className="carousel-position skeleton-position" aria-hidden="true" />
   </div>
 ));
 LoadingState.displayName = 'LoadingState';

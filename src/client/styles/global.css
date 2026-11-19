@@ -101,7 +101,13 @@ body,
 }
 
 body {
-  background: var(--bg);
+  /* Splash backdrop: patterned image from /public, shown undimmed.
+     --bg is the fallback colour while it loads. */
+  background-color: var(--bg);
+  background-image: url('/background.jpg');
+  backdrop-filter: brightness(0.7) blur(2px);
+  background-size: cover;
+  background-position: center;
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;

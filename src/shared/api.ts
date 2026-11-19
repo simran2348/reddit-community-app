@@ -3,10 +3,10 @@
  * Devvit server. Everything that crosses the network boundary is typed here.
  */
 
-export type RankingPeriod = 'week' | 'month';
+export type RankingPeriod = 'week' | 'month' | 'year';
 
 export const isRankingPeriod = (value: unknown): value is RankingPeriod =>
-  value === 'week' || value === 'month';
+  value === 'week' || value === 'month' || value === 'year';
 
 export type ConfigResponse = {
   /** Subreddit the app is installed in; all posts are read from here. */

@@ -49,7 +49,7 @@ api.get('/config', async (c) => {
   }
 });
 
-/** GET /api/rankings?period=week|month – top 10 image posts. */
+/** GET /api/rankings?period=week|month|year – top 10 image posts. */
 api.get('/rankings', async (c) => {
   const period = c.req.query('period') ?? 'week';
   if (!isRankingPeriod(period)) {
@@ -57,7 +57,7 @@ api.get('/rankings', async (c) => {
       {
         status: 'error',
         code: 'INVALID_REQUEST',
-        message: 'period must be "week" or "month"',
+        message: 'period must be "week", "month" or "year"',
       },
       400
     );

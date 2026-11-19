@@ -49,7 +49,11 @@ const loadRankings = async (
   period: RankingPeriod
 ): Promise<RankingsResponse> => {
   const posts = await reddit
-    .getTopPosts({ subredditName: subreddit, timeframe: period, limit: SCAN_LIMIT })
+    .getTopPosts({
+      subredditName: subreddit,
+      timeframe: period,
+      limit: SCAN_LIMIT,
+    })
     .all();
 
   const top: { post: Post; imageUrl: string }[] = [];
@@ -79,7 +83,9 @@ const loadRankings = async (
   };
 };
 
-export const getRankings = (period: RankingPeriod): Promise<RankingsResponse> => {
+export const getRankings = (
+  period: RankingPeriod
+): Promise<RankingsResponse> => {
   const subreddit = SOURCE_SUBREDDIT;
   return cached(
     `rankings:images:v2:${subreddit.toLowerCase()}:${period}`,

@@ -1,22 +1,33 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import type { CSSProperties, PointerEvent, ReactNode } from 'react';
 import { CarouselControls } from './CarouselControls';
 import { useCarousel } from '../hooks/useCarousel';
+import { useDocumentHidden } from '../hooks/useDocumentHidden';
 
 type CarouselProps<T> = {
   items: readonly T[];
   getKey: (item: T) => string;
-  renderItem: (item: T, isActive: boolean, reveal: RevealState) => ReactNode;
+  renderItem: (item: T, isActive: boolean) => ReactNode;
   label: string;
-};
-
-/** Swipe-up reveal state; only ever true for the active card. */
-export type RevealState = {
-  revealed: boolean;
-  toggle: () => void;
+  /** Advance automatically every N ms; null/undefined disables auto-play. */
+  autoplayMs?: number | null;
+  /** Externally paused (e.g. settings open or another tab showing). */
+  paused?: boolean;
 };
 
 type SlidePosition =
   'active' | 'prev' | 'next' | 'hidden-left' | 'hidden-right';
+
+/**
+ * Signed distance from the front card around the loop, taking the shorter
+ * way. With 10 items and item 1 in front, item 10 is -1 (left) and item 2
+ * is +1 (right).
+ */
+const loopOffset = (i: number, index: number, count: number): number => {
+  if (count === 0) return 0;
+  const forward = (((i - index) % count) + count) % count;
+  return forward > count / 2 ? forward - count : forward;
+};
 
 const positionFor = (offset: number): SlidePosition => {
   if (offset === 0) return 'active';
@@ -36,12 +47,41 @@ export const Carousel = <T,>({
   getKey,
   renderItem,
   label,
+  autoplayMs = null,
+  paused = false,
 }: CarouselProps<T>) => {
   const carousel = useCarousel(items.length);
+  const [hovered, setHovered] = useState(false);
+  const documentHidden = useDocumentHidden();
+  const { index, goTo } = carousel;
+  const count = items.length;
+
+  // Auto-play: one timeout per slide, so any manual change restarts the
+  // countdown. Wraps from the last image back to the first. Pauses while
+  // hovered with a mouse or when not visible.
+  const autoplayActive =
+    autoplayMs !== null && count > 1 && !paused && !hovered && !documentHidden;
+
+  useEffect(() => {
+    if (!autoplayActive || autoplayMs === null) return;
+    const timer = window.setTimeout(() => {
+      goTo(index + 1 >= count ? 0 : index + 1);
+    }, autoplayMs);
+    return () => window.clearTimeout(timer);
+  }, [autoplayActive, autoplayMs, index, count, goTo]);
+
+  const onPointerEnter = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse') setHovered(true);
+  };
+  const onPointerLeave = () => setHovered(false);
 
   return (
     <div className="carousel">
-      <div className="carousel__frame">
+      <div
+        className="carousel__frame"
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+      >
         <div
           className="carousel__stage"
           role="region"
@@ -52,7 +92,7 @@ export const Carousel = <T,>({
         >
           <ul className="carousel__cards">
             {items.map((item, i) => {
-              const offset = i - carousel.index;
+              const offset = loopOffset(i, carousel.index, items.length);
               const position = positionFor(offset);
               const isActive = position === 'active';
               const isNeighbour = position === 'prev' || position === 'next';
@@ -71,12 +111,13 @@ export const Carousel = <T,>({
                   aria-hidden={!isActive}
                 >
                   <div className="carousel__card-content" inert={!isActive}>
-                    {isNear &&
-                      renderItem(item, isActive, {
-                        revealed: isActive && carousel.revealed,
-                        toggle: carousel.toggleRevealed,
-                      })}
+                    {isNear && renderItem(item, isActive)}
                   </div>
+                  {/* Each card carries its own position tag, so it moves
+                      with the image and fades in when the card is in front. */}
+                  <span className="card-position" aria-hidden="true">
+                    {i + 1} / {items.length}
+                  </span>
                   {isNeighbour && (
                     <button
                       type="button"
@@ -92,18 +133,19 @@ export const Carousel = <T,>({
           </ul>
         </div>
         <CarouselControls
-          index={carousel.index}
-          count={items.length}
+          canPrev={carousel.canPrev}
+          canNext={carousel.canNext}
           onPrev={carousel.prev}
           onNext={carousel.next}
           label={label}
         />
+        {/* Screen-reader announcement of the current position. */}
+        <p className="visually-hidden" aria-live="polite">
+          {items.length === 0
+            ? '0 of 0'
+            : `${label} ${carousel.index + 1} of ${items.length}`}
+        </p>
       </div>
-      <p className="carousel-position" aria-live="polite">
-        {items.length === 0
-          ? '0 / 0'
-          : `${carousel.index + 1} / ${items.length}`}
-      </p>
     </div>
   );
 };

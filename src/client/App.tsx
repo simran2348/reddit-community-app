@@ -1,36 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MainNavigation } from './components/MainNavigation';
-import type { Section } from './components/MainNavigation';
+import { BottomNav } from './components/BottomNav';
+import type { NavTarget } from './components/BottomNav';
 import { SettingsPanel } from './components/SettingsPanel';
-import { useImageLayout } from './preferences';
+import { EmptyState } from './components/States';
+import { PERIOD_LABEL } from './periods';
+import { usePreferences } from './preferences';
 import { CompetitionScreen } from './screens/CompetitionScreen';
 import { TopImagesScreen } from './screens/TopImagesScreen';
 import { fetchConfig } from './services/configService';
 
+type Section = 'images' | 'competition';
+
 /**
- * Splash-only dashboard. Section switching and the settings screen are local
- * React state: no expanded mode, no page navigation, and no interference with
- * Reddit's scrolling. Screens stay mounted after first visit so switching
- * keeps carousel position and avoids refetching.
+ * Splash-only dashboard with a bottom navigation bar: rankings, competition
+ * and settings. Everything is local React state: no expanded mode, no page
+ * navigation, and no interference with Reddit's scrolling. Screens stay
+ * mounted after their first visit so switching keeps carousel position and
+ * avoids refetching.
  */
 export const App = () => {
   const [section, setSection] = useState<Section>('images');
   const [competitionEnabled, setCompetitionEnabled] = useState(false);
   const [competitionVisited, setCompetitionVisited] = useState(false);
-  const [subreddit, setSubreddit] = useState<string | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { layout, setLayout } = useImageLayout();
+  const { prefs, update } = usePreferences();
 
   useEffect(() => {
     let cancelled = false;
     fetchConfig()
       .then((config) => {
         if (cancelled) return;
-        setSubreddit(config.subreddit);
         setCompetitionEnabled(config.competitionEnabled);
       })
       .catch((error: unknown) => {
-        // Top Images still works; the competition tab just stays hidden.
+        // Rankings still work; the competition just shows as not running.
         console.warn('Failed to load config', error);
       });
     return () => {
@@ -38,50 +41,67 @@ export const App = () => {
     };
   }, []);
 
-  const changeSection = useCallback((next: Section) => {
-    setSection(next);
-    if (next === 'competition') setCompetitionVisited(true);
+  const selectNav = useCallback((target: NavTarget) => {
+    if (target === 'settings') {
+      setSettingsOpen((open) => !open);
+      return;
+    }
+    setSettingsOpen(false);
+    setSection(target);
+    if (target === 'competition') setCompetitionVisited(true);
   }, []);
 
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
-  const activeSection = competitionEnabled ? section : 'images';
+  const navActive: NavTarget = settingsOpen ? 'settings' : section;
 
   return (
-    <div className={`app app--${activeSection}`}>
-      <div className="app__main" inert={settingsOpen}>
-        {competitionEnabled && (
-          <div className="app__top">
-            <MainNavigation active={activeSection} onChange={changeSection} />
-          </div>
-        )}
-
-        <div className="app__screens">
-          <div className="app__screen" hidden={activeSection !== 'images'}>
-            <TopImagesScreen layout={layout} onOpenSettings={openSettings} />
-          </div>
-          {competitionEnabled && competitionVisited && (
-            <div
-              className="app__screen"
-              hidden={activeSection !== 'competition'}
-            >
-              <CompetitionScreen
-                isActive={activeSection === 'competition'}
-                onOpenSettings={openSettings}
+    <div
+      className={`app app--${section}${settingsOpen ? ' app--settings-open' : ''}`}
+    >
+      <div className="app__content">
+        <div className="app__main" inert={settingsOpen}>
+          <div className="app__screens">
+            <div className="app__screen" hidden={section !== 'images'}>
+              <TopImagesScreen
+                period={prefs.period}
+                autoplayMs={
+                  prefs.autoplay ? prefs.autoplaySeconds * 1000 : null
+                }
+                paused={settingsOpen || section !== 'images'}
               />
             </div>
-          )}
+            {competitionVisited && (
+              <div className="app__screen" hidden={section !== 'competition'}>
+                {competitionEnabled ? (
+                  <CompetitionScreen
+                    isActive={section === 'competition' && !settingsOpen}
+                  />
+                ) : (
+                  <EmptyState
+                    icon="🏆"
+                    title="No competition right now"
+                    message="Check back when the next photo competition starts."
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
+        <SettingsPanel
+          open={settingsOpen}
+          onClose={closeSettings}
+          prefs={prefs}
+          onChange={update}
+        />
       </div>
 
-      <SettingsPanel
-        open={settingsOpen}
-        onClose={closeSettings}
-        layout={layout}
-        onLayoutChange={setLayout}
-        subreddit={subreddit}
-        competitionEnabled={competitionEnabled}
+      <BottomNav
+        active={navActive}
+        periodLabel={PERIOD_LABEL[prefs.period]}
+        competitionLive={competitionEnabled}
+        onSelect={selectNav}
       />
     </div>
   );

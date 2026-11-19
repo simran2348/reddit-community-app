@@ -4,18 +4,7 @@ import type { KeyboardEvent, PointerEvent, TouchEvent } from 'react';
 const SWIPE_THRESHOLD_PX = 30;
 const SWIPE_CLICK_GUARD_MS = 350;
 
-type Gesture = {
-  x: number;
-  y: number;
-  handled: boolean;
-  /** Started inside a `[data-reveal-zone]`, so vertical swipes reveal. */
-  vertical: boolean;
-};
-
-const REVEAL_ZONE_SELECTOR = '[data-reveal-zone]';
-
-const startsInRevealZone = (target: EventTarget | null): boolean =>
-  target instanceof Element && target.closest(REVEAL_ZONE_SELECTOR) !== null;
+type Gesture = { x: number; y: number; handled: boolean };
 
 /**
  * Index state plus swipe/keyboard handlers for a carousel.
@@ -34,9 +23,6 @@ export const useCarousel = (count: number) => {
   const [rawIndex, setIndex] = useState(0);
   const gesture = useRef<Gesture | null>(null);
   const lastSwipeAt = useRef(0);
-  // Index whose details are revealed; any slide change clears it, so each
-  // image starts covered and must be swiped up again.
-  const [revealedIndex, setRevealedIndex] = useState<number | null>(null);
 
   // Clamp during render so a shrinking list never leaves us out of range.
   const index = count === 0 ? 0 : Math.min(rawIndex, count - 1);
@@ -45,27 +31,21 @@ export const useCarousel = (count: number) => {
     (next: number) => {
       if (count === 0) return;
       setIndex(Math.max(0, Math.min(next, count - 1)));
-      setRevealedIndex(null);
     },
     [count]
   );
 
-  const prev = useCallback(() => goTo(index - 1), [goTo, index]);
-  const next = useCallback(() => goTo(index + 1), [goTo, index]);
-  const reset = useCallback(() => {
-    setIndex(0);
-    setRevealedIndex(null);
-  }, []);
-
-  const revealed = revealedIndex === index;
-  const setRevealed = useCallback(
-    (open: boolean) => setRevealedIndex(open ? index : null),
-    [index]
+  // The carousel loops: before the first image comes the last, and after
+  // the last comes the first.
+  const prev = useCallback(
+    () => goTo(index === 0 ? count - 1 : index - 1),
+    [goTo, index, count]
   );
-  const toggleRevealed = useCallback(
-    () => setRevealedIndex((current) => (current === index ? null : index)),
-    [index]
+  const next = useCallback(
+    () => goTo(index + 1 >= count ? 0 : index + 1),
+    [goTo, index, count]
   );
+  const reset = useCallback(() => setIndex(0), []);
 
   /** Tap on a neighbouring card; ignored right after a swipe ends on it. */
   const selectFromTap = useCallback(
@@ -76,19 +56,11 @@ export const useCarousel = (count: number) => {
     [goTo]
   );
 
-  const start = useCallback(
-    (x: number, y: number, target: EventTarget | null) => {
-      gesture.current = {
-        x,
-        y,
-        handled: false,
-        vertical: startsInRevealZone(target),
-      };
-    },
-    []
-  );
+  const start = useCallback((x: number, y: number) => {
+    gesture.current = { x, y, handled: false };
+  }, []);
 
-  /** Fires at most one action (slide change or reveal) per gesture. */
+  /** Fires at most one slide change per gesture. */
   const move = useCallback(
     (x: number, y: number) => {
       const g = gesture.current;
@@ -107,17 +79,10 @@ export const useCarousel = (count: number) => {
         return;
       }
 
-      if (g.vertical && absY >= SWIPE_THRESHOLD_PX) {
-        g.handled = true;
-        lastSwipeAt.current = Date.now();
-        setRevealed(dy < 0);
-        return;
-      }
-
-      // Mostly vertical outside the image: let Reddit scroll.
+      // Mostly vertical: let Reddit scroll and ignore the rest of it.
       gesture.current = null;
     },
-    [next, prev, setRevealed]
+    [next, prev]
   );
 
   const end = useCallback(() => {
@@ -128,7 +93,7 @@ export const useCarousel = (count: number) => {
     (event: TouchEvent<HTMLElement>) => {
       const touch = event.touches[0];
       if (event.touches.length === 1 && touch) {
-        start(touch.clientX, touch.clientY, event.target);
+        start(touch.clientX, touch.clientY);
       } else {
         end();
       }
@@ -148,7 +113,7 @@ export const useCarousel = (count: number) => {
     (event: PointerEvent<HTMLElement>) => {
       if (event.pointerType === 'touch') return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      start(event.clientX, event.clientY, event.target);
+      start(event.clientX, event.clientY);
     },
     [start]
   );
@@ -177,10 +142,8 @@ export const useCarousel = (count: number) => {
     goTo,
     reset,
     selectFromTap,
-    revealed,
-    toggleRevealed,
-    canPrev: index > 0,
-    canNext: index < count - 1,
+    canPrev: count > 1,
+    canNext: count > 1,
     viewportHandlers: {
       onTouchStart,
       onTouchMove,

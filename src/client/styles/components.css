@@ -1,16 +1,47 @@
 /* ---------- App shell ---------- */
 
 .app {
+  /* Eased dark fade (many stops) so there's no visible band where the
+     gradient changes slope. Used by the image details and bottom caption. */
+  --fade-dark: linear-gradient(
+    to top,
+    rgb(0 0 0 / 0.85) 0%,
+    rgb(0 0 0 / 0.84) 8%,
+    rgb(0 0 0 / 0.8) 17%,
+    rgb(0 0 0 / 0.74) 26%,
+    rgb(0 0 0 / 0.66) 35%,
+    rgb(0 0 0 / 0.56) 44%,
+    rgb(0 0 0 / 0.45) 53%,
+    rgb(0 0 0 / 0.34) 62%,
+    rgb(0 0 0 / 0.24) 71%,
+    rgb(0 0 0 / 0.15) 80%,
+    rgb(0 0 0 / 0.08) 88%,
+    rgb(0 0 0 / 0.03) 95%,
+    rgb(0 0 0 / 0) 100%
+  );
+  --app-pad-x: clamp(var(--space-3), 3vw, var(--space-5));
+  --app-pad-y: var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   height: 100%;
   max-width: 960px;
   margin: 0 auto;
-  padding: var(--space-3) clamp(var(--space-3), 3vw, var(--space-5));
+  padding: var(--app-pad-y) var(--app-pad-x);
   /* Clip everything to the splash box; the app never scrolls itself. */
   overflow: hidden;
   position: relative;
+}
+
+/* Area above the bottom nav. Main screens and the settings screen slide
+   inside it, clipped so neither shows past its edges. */
+.app__content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app__main {
@@ -19,6 +50,12 @@
   gap: var(--space-3);
   flex: 1;
   min-height: 0;
+  transition: transform 0.32s var(--ease);
+}
+
+/* Push transition: both screens move together over the same background. */
+.app--settings-open .app__main {
+  transform: translateX(-100%);
 }
 
 .app--competition {
@@ -140,11 +177,21 @@
 /* ---------- Screens ---------- */
 
 .screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   flex: 1;
   min-height: 0;
+}
+
+/* Top Images: the cog floats in the empty top-right gutter beside the front
+   image instead of taking a whole row, giving the images that height. */
+.screen--images .screen__toolbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 30;
 }
 
 .screen__toolbar {
@@ -268,8 +315,9 @@
 .carousel__frame {
   /* Arrow size + edge inset; on small screens the active card leaves room
      for both arrows so they only overlap the faded neighbour cards. */
-  --nav-size: 32px;
-  --nav-inset: 2px;
+  --nav-size: 38px;
+  /* Negative inset tucks the arrows into the page gutter, near the edge. */
+  --nav-inset: -6px;
   --card-w: calc(100% - 2 * (var(--nav-size) + var(--nav-inset) + 6px));
   position: relative;
   display: flex;
@@ -292,13 +340,13 @@
   .carousel__frame {
     --nav-size: 40px;
     --nav-inset: var(--space-2);
-    --card-w: 64%;
+    --card-w: 72%;
   }
 }
 
 @media (min-width: 840px) {
   .carousel__frame {
-    --card-w: 50%;
+    --card-w: 60%;
   }
 }
 
@@ -324,7 +372,8 @@
   z-index: calc(10 - var(--depth));
   transition:
     transform 0.4s var(--ease),
-    opacity 0.4s var(--ease);
+    opacity 0.4s var(--ease),
+    filter 0.4s var(--ease);
 }
 
 .carousel__card.is-active {
@@ -334,12 +383,13 @@
 
 .carousel__card.is-prev {
   transform: translateX(-40%) scale(0.8);
-  opacity: 0.4;
+  /* Solid but dimmed, so neighbours don't show the background through. */
+  filter: brightness(0.5);
 }
 
 .carousel__card.is-next {
   transform: translateX(40%) scale(0.8);
-  opacity: 0.4;
+  filter: brightness(0.5);
 }
 
 .carousel__card.is-hidden-left {
@@ -452,13 +502,41 @@
   cursor: default;
 }
 
-.carousel-position {
-  flex: none;
-  text-align: center;
-  font-size: 13px;
+/* Per-card position tag on each image's top-right corner. It travels with
+   its card and fades in only on the front card, like the overlay details. */
+.card-position {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 3;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+
+.carousel__card.is-active .card-position {
+  opacity: 1;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---------- Info popover ---------- */
@@ -866,7 +944,7 @@
 
 .carousel--skeleton .carousel__card.is-prev,
 .carousel--skeleton .carousel__card.is-next {
-  opacity: 0.5;
+  filter: brightness(0.85);
 }
 
 .carousel-nav.is-skeleton {
@@ -877,9 +955,8 @@
 .skeleton-position {
   display: block;
   width: 44px;
-  height: 14px;
-  margin: 2px auto;
-  border-radius: var(--radius-pill);
+  height: 20px;
+  padding: 0;
   background: var(--surface);
   animation: pulse 1.4s ease-in-out infinite;
 }
@@ -939,7 +1016,8 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  /* Transparent: the splash background stays put while screens slide. */
+  background: transparent;
   transform: translateX(100%);
   visibility: hidden;
   transition:
@@ -960,10 +1038,14 @@
   align-items: center;
   gap: var(--space-2);
   flex: none;
-  padding: var(--space-3) var(--space-3) var(--space-2);
+  padding: var(--space-1) 0 var(--space-3);
 }
 
 .settings__title {
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  box-shadow: var(--shadow-card);
   font-size: 16px;
   font-weight: 700;
 }
@@ -971,18 +1053,22 @@
 .settings__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   flex: 1;
   min-height: 0;
   /* Only scrolls if a very short splash can't fit the content. */
   overflow-y: auto;
-  padding: 0 var(--space-4) var(--space-4);
+  gap: var(--space-3);
+  padding: 0 0 var(--space-2);
 }
 
 .settings__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  box-shadow: var(--shadow-card);
 }
 
 .settings__heading {
@@ -1000,117 +1086,6 @@
   color: var(--text-muted);
 }
 
-.layout-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.layout-option {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: var(--space-3);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.15s var(--ease),
-    background-color 0.15s var(--ease);
-}
-
-.layout-option:hover {
-  border-color: var(--border-strong);
-}
-
-.layout-option.is-selected {
-  border-color: var(--accent-apps);
-  background: var(--accent-apps-soft);
-}
-
-.layout-option__title {
-  font-size: 13.5px;
-  font-weight: 700;
-}
-
-.layout-option__description {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-muted);
-}
-
-/* Mini layout illustrations */
-
-.layout-preview {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 64px;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.layout-preview__photo {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, #f6a96b, #d93900 70%);
-}
-
-.layout-preview__details {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 7px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.layout-preview__dot {
-  width: 12px;
-  height: 12px;
-  flex: none;
-  border-radius: 50%;
-  background: #fff;
-}
-
-.layout-preview__lines {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-}
-
-.layout-preview__lines span {
-  height: 4px;
-  border-radius: 2px;
-  background: rgb(255 255 255 / 0.9);
-}
-
-.layout-preview__lines span + span {
-  width: 60%;
-  opacity: 0.7;
-}
-
-.layout-preview--reveal .layout-preview__photo {
-  bottom: 22px;
-  z-index: 3;
-}
-
-.layout-preview--reveal .layout-preview__dot {
-  background: var(--text-subtle);
-}
-
-.layout-preview--reveal .layout-preview__lines span {
-  background: var(--text-subtle);
-}
-
 /* ---------- Post details (avatar, title, stats) ---------- */
 
 .post-details {
@@ -1121,21 +1096,32 @@
 }
 
 .avatar {
+  display: block;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  object-fit: cover;
+  overflow: hidden;
   background: var(--surface);
 }
 
-.avatar--fallback {
-  display: grid;
-  place-items: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--accent-apps);
+.avatar__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Default Snoo: no padding, zoomed a little toward the head and body so the
+   character fills the circle instead of floating in white space. */
+.avatar--default {
+  background: #fff;
+}
+
+.avatar--default .avatar__image {
+  object-fit: contain;
+  transform: scale(1.25);
+  transform-origin: 50% 40%;
 }
 
 .post-details__text {
@@ -1185,9 +1171,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: var(--space-6, 28px) var(--space-3) var(--space-3);
+  /* Fade only spans the details plus a short lead-in above them. */
+  padding: 28px var(--space-3) var(--space-3);
   border-radius: 0 0 10px 10px;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0));
+  background: var(--fade-dark);
   color: #fff;
   pointer-events: none;
   transition: opacity 0.3s var(--ease);
@@ -1211,104 +1198,235 @@
   opacity: 0;
 }
 
-/* ---------- Layout: swipe up to reveal ---------- */
-
-.reveal-card {
-  --details-h: 72px;
-  position: relative;
-  height: 100%;
+@media (prefers-reduced-motion: reduce) {
+  .settings,
+  .app__main {
+    transition: none;
+  }
 }
 
-.reveal-card__details {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* ---------- Toolbar title ("Top posts this week") ---------- */
+
+.screen__title {
+  margin: 0;
+  min-width: 0;
+  font-size: clamp(15px, 4vw, 17px);
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.screen__title-accent {
+  color: var(--accent-apps);
+}
+
+/* ---------- Settings: segmented toggle ---------- */
+
+.toggle-group {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  transition: opacity 0.2s var(--ease);
+}
+
+.toggle-group__option {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s var(--ease),
+    color 0.15s var(--ease);
+}
+
+.toggle-group__option.is-selected {
+  background: var(--accent-apps);
+  color: #fff;
+}
+
+.toggle-group--small .toggle-group__option {
+  min-height: 30px;
+  font-size: 12.5px;
+}
+
+.toggle-group.is-disabled {
+  opacity: 0.45;
+}
+
+.toggle-group__option:disabled {
+  cursor: default;
+}
+
+/* ---------- Settings: checkbox ---------- */
+
+.checkbox {
+  position: relative;
   display: flex;
   align-items: center;
-  height: calc(var(--details-h) - 8px);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-raised);
+  gap: var(--space-2);
+  min-height: 32px;
+  cursor: pointer;
+}
+
+/* Visually hidden but still focusable and announced. */
+.checkbox__input {
+  position: absolute;
   opacity: 0;
-  transition: opacity 0.3s var(--ease);
+  width: 1px;
+  height: 1px;
+  margin: 0;
 }
 
-.reveal-card.is-revealed .reveal-card__details {
-  opacity: 1;
+.checkbox__box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: transparent;
+  transition:
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease);
 }
 
-.reveal-card__photo {
+.checkbox__input:checked + .checkbox__box {
+  border-color: var(--accent-apps);
+  background: var(--accent-apps);
+  color: #fff;
+}
+
+.checkbox__input:focus-visible + .checkbox__box {
+  outline: 2px solid var(--accent-apps);
+  outline-offset: 2px;
+}
+
+.checkbox__label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ---------- Readable chips over the patterned background ---------- */
+
+.screen__title,
+.screen__heading,
+.settings-button {
+  background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+  box-shadow: var(--shadow-card);
+}
+
+.screen__title,
+.screen__heading {
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-pill);
+}
+
+.settings-button:hover {
+  background: var(--surface-raised);
+}
+
+/* ---------- Top-3 medal (p1/p2/p3.png) ---------- */
+
+/* Sized as a share of the card width so it scales with the screen, within
+   sensible min/max bounds. Keeps the PNG's 260x355 proportions. */
+.rank-medal {
   position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: 10px;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 2;
+  width: clamp(20px, 10%, 34px);
+  aspect-ratio: 260 / 355;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.35));
+  pointer-events: none;
 }
 
-.reveal-card.is-revealed .reveal-card__photo {
-  transform: translateY(calc(-1 * var(--details-h)));
+/* ---------- Bottom navigation ---------- */
+
+.bottom-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-1);
+  flex: none;
+  padding: var(--space-1);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.12);
 }
 
-/* The front image owns vertical swipes so it can slide up; drag anywhere
-   else (tabs, filter, side cards) to scroll the Reddit feed. */
-.carousel__card.is-active .reveal-card__photo {
-  touch-action: none;
-}
-
-.reveal-card__toggle {
-  position: absolute;
-  left: 50%;
-  bottom: var(--space-2);
+.bottom-nav__item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
+  gap: 6px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 var(--space-2);
   border: 0;
-  border-radius: 10px;
-  background: rgb(0 0 0 / 0.3);
-  color: #fff;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  transform: translateX(-50%);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   transition:
-    opacity 0.2s var(--ease),
-    background-color 0.15s var(--ease);
+    background-color 0.15s var(--ease),
+    color 0.15s var(--ease);
 }
 
-.reveal-card__toggle svg {
+.bottom-nav__item svg {
   display: block;
-  transition: transform 0.3s var(--ease);
+  flex: none;
 }
 
-.reveal-card.is-revealed .reveal-card__toggle svg {
-  transform: rotate(180deg);
+.bottom-nav__item:hover {
+  color: var(--text);
 }
 
-.reveal-card__toggle:hover {
-  background: rgb(0 0 0 / 0.48);
+.bottom-nav__item.is-active {
+  background: var(--accent-apps-soft);
+  color: var(--accent-apps);
 }
 
-/* Touch screens always show the hint; mouse users see it on hover. */
-@media (hover: hover) and (pointer: fine) {
-  .reveal-card__toggle {
-    opacity: 0;
-  }
-  .reveal-card:hover .reveal-card__toggle,
-  .reveal-card__toggle:focus-visible,
-  .reveal-card.is-revealed .reveal-card__toggle {
-    opacity: 1;
-  }
+.bottom-nav__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 700;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .settings,
-  .reveal-card__photo {
-    transition: none;
-  }
+.bottom-nav__icon {
+  position: relative;
+  display: block;
+  line-height: 0;
+}
+
+/* Live competition indicator. */
+.bottom-nav__dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e5322d;
+  box-shadow: 0 0 0 2px var(--surface-raised);
 }

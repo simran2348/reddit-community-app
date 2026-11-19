@@ -1,31 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { RankingPeriod, RankingsResponse } from '../../shared/api';
-import { SettingsButton } from '../components/SettingsButton';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
-import { TimeFilter } from '../components/TimeFilter';
 import { TopImagesCarousel } from '../components/TopImagesCarousel';
-import type { ImageLayout } from '../preferences';
+import { PERIOD_TEXT } from '../periods';
 import { clearRankingsCache, fetchRankings } from '../services/rankingService';
 
 type Result =
   | { status: 'success'; data: RankingsResponse }
   | { status: 'error'; message: string };
 
-const PERIOD_TEXT: Record<RankingPeriod, string> = {
-  week: 'the last 7 days',
-  month: 'the last 30 days',
-};
-
 type TopImagesScreenProps = {
-  layout: ImageLayout;
-  onOpenSettings: () => void;
+  period: RankingPeriod;
+  /** Auto-play interval in ms, or null when auto-play is off. */
+  autoplayMs: number | null;
+  /** Pause auto-play (settings open or this tab hidden). */
+  paused: boolean;
 };
 
 export const TopImagesScreen = ({
-  layout,
-  onOpenSettings,
+  period,
+  autoplayMs,
+  paused,
 }: TopImagesScreenProps) => {
-  const [period, setPeriod] = useState<RankingPeriod>('week');
   const [results, setResults] = useState<
     Partial<Record<RankingPeriod, Result>>
   >({});
@@ -75,14 +71,8 @@ export const TopImagesScreen = ({
     <section
       className="screen screen--images"
       id="panel-images"
-      role="tabpanel"
-      aria-labelledby="tab-images"
+      aria-label="Top posts"
     >
-      <div className="screen__toolbar">
-        <TimeFilter value={period} onChange={setPeriod} />
-        <SettingsButton onClick={onOpenSettings} />
-      </div>
-
       <div className="screen__body">
         {!result && <LoadingState label="Loading top images" />}
         {result?.status === 'error' && (
@@ -99,7 +89,8 @@ export const TopImagesScreen = ({
           <TopImagesCarousel
             key={period}
             images={result.data.images}
-            layout={layout}
+            autoplayMs={autoplayMs}
+            paused={paused}
           />
         )}
       </div>

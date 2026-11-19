@@ -1,39 +1,29 @@
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import type { ImageRanking } from '../../shared/api';
-import type { ImageLayout } from '../preferences';
 import { Carousel } from './Carousel';
-import type { RevealState } from './Carousel';
 import { TopImageCard } from './TopImageCard';
 
 type TopImagesCarouselProps = {
   images: readonly ImageRanking[];
-  layout: ImageLayout;
+  autoplayMs: number | null;
+  paused: boolean;
 };
 
 const getKey = (image: ImageRanking) => image.id;
+const renderImage = (image: ImageRanking, isActive: boolean) => (
+  <TopImageCard image={image} isActive={isActive} />
+);
 
 export const TopImagesCarousel = memo(
-  ({ images, layout }: TopImagesCarouselProps) => {
-    const renderImage = useCallback(
-      (image: ImageRanking, isActive: boolean, reveal: RevealState) => (
-        <TopImageCard
-          image={image}
-          isActive={isActive}
-          layout={layout}
-          reveal={reveal}
-        />
-      ),
-      [layout]
-    );
-
-    return (
-      <Carousel
-        items={images}
-        getKey={getKey}
-        renderItem={renderImage}
-        label="image"
-      />
-    );
-  }
+  ({ images, autoplayMs, paused }: TopImagesCarouselProps) => (
+    <Carousel
+      items={images}
+      getKey={getKey}
+      renderItem={renderImage}
+      label="image"
+      autoplayMs={autoplayMs}
+      paused={paused}
+    />
+  )
 );
 TopImagesCarousel.displayName = 'TopImagesCarousel';

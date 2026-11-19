@@ -2,43 +2,41 @@ import { memo, useState } from 'react';
 import { navigateTo } from '@devvit/web/client';
 import type { ImageRanking } from '../../shared/api';
 import { formatCount } from '../format';
-import type { ImageLayout } from '../preferences';
-import type { RevealState } from './Carousel';
 
 type TopImageCardProps = {
   image: ImageRanking;
   isActive: boolean;
-  layout: ImageLayout;
-  reveal: RevealState;
 };
 
 type ImageStatus = 'loading' | 'loaded' | 'error';
 
-const Avatar = ({ name, url }: { name: string; url: string | null }) => {
+/** Bundled default from /public, used when a user has no snoovatar. */
+const DEFAULT_AVATAR = '/snoo.png';
+
+/** The author's snoovatar, falling back to the default Snoo. */
+const Avatar = ({ url }: { url: string | null }) => {
   const [failed, setFailed] = useState(false);
-  if (!url || failed) {
-    return (
-      <span className="avatar avatar--fallback" aria-hidden="true">
-        {name.charAt(0).toUpperCase() || '?'}
-      </span>
-    );
-  }
+  const useDefault = !url || failed;
+  // The circle is a clipping wrapper so the default Snoo can be zoomed
+  // inside it without the circle itself growing.
   return (
-    <img
-      className="avatar"
-      src={url}
-      alt=""
-      loading="lazy"
-      draggable={false}
-      onError={() => setFailed(true)}
-    />
+    <span className={`avatar${useDefault ? ' avatar--default' : ''}`}>
+      <img
+        className="avatar__image"
+        src={useDefault ? DEFAULT_AVATAR : url}
+        alt=""
+        loading="lazy"
+        draggable={false}
+        onError={useDefault ? undefined : () => setFailed(true)}
+      />
+    </span>
   );
 };
 
 /** Avatar, title, author, upvotes and comments; shared by both layouts. */
 const PostDetails = ({ image }: { image: ImageRanking }) => (
   <div className="post-details">
-    <Avatar name={image.author} url={image.authorAvatarUrl} />
+    <Avatar url={image.authorAvatarUrl} />
     <div className="post-details__text">
       <button
         type="button"
@@ -107,55 +105,21 @@ const Photo = ({
   );
 };
 
-export const TopImageCard = memo(
-  ({ image, isActive, layout, reveal }: TopImageCardProps) => {
-    if (layout === 'overlay') {
-      return (
-        <div className="overlay-card">
-          <Photo image={image} isActive={isActive} />
-          <div className="overlay-card__details">
-            <PostDetails image={image} />
-          </div>
-        </div>
-      );
-    }
-
-    // Reveal layout: details sit underneath; the photo slides up to show them.
-    return (
-      <div className={`reveal-card${reveal.revealed ? ' is-revealed' : ''}`}>
-        <div className="reveal-card__details" aria-hidden={!reveal.revealed}>
-          <PostDetails image={image} />
-        </div>
-        <div className="reveal-card__photo" data-reveal-zone="">
-          <Photo image={image} isActive={isActive} />
-          {isActive && (
-            <button
-              type="button"
-              className="reveal-card__toggle"
-              onClick={reveal.toggle}
-              aria-expanded={reveal.revealed}
-              aria-label={
-                reveal.revealed ? 'Hide post details' : 'Show post details'
-              }
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M6 15l6-6 6 6" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-);
+/** Image card with the post details overlaid on a fade at the bottom. */
+export const TopImageCard = memo(({ image, isActive }: TopImageCardProps) => (
+  <div className="overlay-card">
+    <Photo image={image} isActive={isActive} />
+    {image.rank <= 3 && (
+      <img
+        className="rank-medal"
+        src={`/p${image.rank}.png`}
+        alt={`Rank ${image.rank}`}
+        draggable={false}
+      />
+    )}
+    <div className="overlay-card__details">
+      <PostDetails image={image} />
+    </div>
+  </div>
+));
 TopImageCard.displayName = 'TopImageCard';

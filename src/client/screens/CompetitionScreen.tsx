@@ -6,7 +6,6 @@ import type {
   ViewerVoteState,
 } from '../../shared/api';
 import { CompetitionCarousel } from '../components/CompetitionCarousel';
-import { SettingsButton } from '../components/SettingsButton';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import type { VoteButtonState } from '../components/VoteButton';
 import {
@@ -24,7 +23,6 @@ type LoadState =
 type CompetitionScreenProps = {
   /** True while this tab is visible; used to refresh live vote counts. */
   isActive: boolean;
-  onOpenSettings: () => void;
 };
 
 const applyCounts = (
@@ -40,10 +38,7 @@ const applyCounts = (
   })),
 });
 
-export const CompetitionScreen = ({
-  isActive,
-  onOpenSettings,
-}: CompetitionScreenProps) => {
+export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -157,14 +152,8 @@ export const CompetitionScreen = ({
     <section
       className="screen screen--competition"
       id="panel-competition"
-      role="tabpanel"
-      aria-labelledby="tab-competition"
+      aria-label="Photo competition"
     >
-      <div className="screen__toolbar">
-        <p className="screen__heading">Vote for your favourite photo</p>
-        <SettingsButton onClick={onOpenSettings} />
-      </div>
-
       <div className="screen__body">
         {state.status === 'loading' && <LoadingState label="Loading entries" />}
         {state.status === 'error' && (
