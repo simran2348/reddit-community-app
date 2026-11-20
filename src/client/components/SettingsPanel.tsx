@@ -22,12 +22,12 @@ const PERIODS: readonly { value: RankingPeriod; label: string }[] = [
  */
 export const SettingsPanel = memo(
   ({ open, onClose, prefs, onChange }: SettingsPanelProps) => {
-    const closeRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
     const autoplayId = useId();
 
     useEffect(() => {
       if (!open) return;
-      closeRef.current?.focus({ preventScroll: true });
+      panelRef.current?.focus({ preventScroll: true });
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key === 'Escape') onClose();
       };
@@ -38,37 +38,13 @@ export const SettingsPanel = memo(
     return (
       <div
         className={`settings${open ? ' is-open' : ''}`}
-        role="dialog"
-        aria-modal="true"
+        ref={panelRef}
+        tabIndex={-1}
+        role="region"
         aria-label="Settings"
         aria-hidden={!open}
         inert={!open}
       >
-        <div className="settings__header">
-          <button
-            ref={closeRef}
-            type="button"
-            className="icon-plain-button"
-            onClick={onClose}
-            aria-label="Close settings"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <h2 className="settings__title">Settings</h2>
-        </div>
-
         <div className="settings__body">
           <section className="settings__section">
             <h3 className="settings__heading" id="period-heading">

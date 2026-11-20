@@ -3,8 +3,15 @@ import type { KeyboardEvent, PointerEvent, TouchEvent } from 'react';
 
 const SWIPE_THRESHOLD_PX = 30;
 const SWIPE_CLICK_GUARD_MS = 350;
+/** Fewer images than this stop at the ends instead of looping. */
+export const MIN_LOOP_COUNT = 4;
 
 type Gesture = { x: number; y: number; handled: boolean };
+
+/** Last move: 1 = forward (next), -1 = backward (prev), 0 = not moved yet. */
+export type CarouselDirection = -1 | 0 | 1;
+
+type CarouselState = { index: number; direction: CarouselDirection };
 
 /**
  * Index state plus swipe/keyboard handlers for a carousel.
@@ -20,38 +27,66 @@ type Gesture = { x: number; y: number; handled: boolean };
  * mouse and pen use pointer events.
  */
 export const useCarousel = (count: number) => {
-  const [rawIndex, setIndex] = useState(0);
+  const [state, setState] = useState<CarouselState>({
+    index: 0,
+    direction: 0,
+  });
   const gesture = useRef<Gesture | null>(null);
   const lastSwipeAt = useRef(0);
 
   // Clamp during render so a shrinking list never leaves us out of range.
-  const index = count === 0 ? 0 : Math.min(rawIndex, count - 1);
+  const index = count === 0 ? 0 : Math.min(state.index, count - 1);
+  const direction = state.direction;
+  const loops = count >= MIN_LOOP_COUNT;
 
+  /**
+   * Jump to a slide. The direction decides which side cards that are equally
+   * far both ways (e.g. the other card when there are only 2) end up on.
+   * When omitted it's the shorter way round the loop.
+   */
   const goTo = useCallback(
-    (next: number) => {
+    (target: number, towards?: CarouselDirection) => {
       if (count === 0) return;
-      setIndex(Math.max(0, Math.min(next, count - 1)));
+      const clamped = Math.max(0, Math.min(target, count - 1));
+      setState((current) => {
+        const from = Math.min(current.index, count - 1);
+        const forward = (clamped - from + count) % count;
+        const inferred: CarouselDirection =
+          forward === 0
+            ? current.direction
+            : count < MIN_LOOP_COUNT
+              ? clamped > from
+                ? 1
+                : -1
+              : forward * 2 <= count
+                ? 1
+                : -1;
+        return { index: clamped, direction: towards ?? inferred };
+      });
     },
     [count]
   );
 
-  // The carousel loops: before the first image comes the last, and after
-  // the last comes the first.
-  const prev = useCallback(
-    () => goTo(index === 0 ? count - 1 : index - 1),
-    [goTo, index, count]
-  );
-  const next = useCallback(
-    () => goTo(index + 1 >= count ? 0 : index + 1),
-    [goTo, index, count]
-  );
-  const reset = useCallback(() => setIndex(0), []);
+  // With 4+ images the carousel loops: before the first image comes the
+  // last, and after the last comes the first. With 1-3 it stops at the ends.
+  const canPrev = loops ? count > 1 : index > 0;
+  const canNext = loops ? count > 1 : index < count - 1;
+
+  const prev = useCallback(() => {
+    if (index > 0) goTo(index - 1, -1);
+    else if (loops) goTo(count - 1, -1);
+  }, [goTo, index, count, loops]);
+  const next = useCallback(() => {
+    if (index + 1 < count) goTo(index + 1, 1);
+    else if (loops) goTo(0, 1);
+  }, [goTo, index, count, loops]);
+  const reset = useCallback(() => setState({ index: 0, direction: 0 }), []);
 
   /** Tap on a neighbouring card; ignored right after a swipe ends on it. */
   const selectFromTap = useCallback(
-    (target: number) => {
+    (target: number, towards: CarouselDirection) => {
       if (Date.now() - lastSwipeAt.current < SWIPE_CLICK_GUARD_MS) return;
-      goTo(target);
+      goTo(target, towards);
     },
     [goTo]
   );
@@ -136,14 +171,16 @@ export const useCarousel = (count: number) => {
 
   return {
     index,
+    direction,
     count,
+    loops,
     prev,
     next,
     goTo,
     reset,
     selectFromTap,
-    canPrev: count > 1,
-    canNext: count > 1,
+    canPrev,
+    canNext,
     viewportHandlers: {
       onTouchStart,
       onTouchMove,

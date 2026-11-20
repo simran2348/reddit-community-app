@@ -53,11 +53,17 @@
     Arial, sans-serif;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
+  --nav-bg: #ffffff;
+  --nav-border: var(--border);
+
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    /* Near-black, not grey, so the bar reads as solid. */
+    --nav-bg: #0a0b0c;
+    --nav-border: rgb(255 255 255 / 0.06);
     --bg: #0e1113;
     --surface: #181c1f;
     --surface-raised: #1d2226;

@@ -7,7 +7,7 @@ import type {
 } from '../../shared/api';
 import { cached } from './cache';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
-import { SOURCE_SUBREDDIT } from './source';
+import { getSourceSubreddit } from './source';
 
 const TOP_COUNT = 10;
 const SCAN_LIMIT = 100;
@@ -86,7 +86,7 @@ const loadRankings = async (
 export const getRankings = (
   period: RankingPeriod
 ): Promise<RankingsResponse> => {
-  const subreddit = SOURCE_SUBREDDIT;
+  const subreddit = getSourceSubreddit();
   return cached(
     `rankings:images:v2:${subreddit.toLowerCase()}:${period}`,
     CACHE_TTL_SECONDS,

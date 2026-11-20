@@ -1,9 +1,11 @@
+import { context } from '@devvit/web/server';
+
 /**
- * Subreddit whose posts power Top Images and the Photo Competition.
- * Hardcoded for now; switch back to `context.subredditName` to use the
- * subreddit the app is installed in.
+ * Subreddit whose posts power Top Images and the Photo Competition: the one
+ * the app is installed in. Triggers (new posts, flair changes) only fire for
+ * this subreddit, so the competition index depends on it being the source.
  */
-export const SOURCE_SUBREDDIT = 'DesiTown';
+export const getSourceSubreddit = (): string => context.subredditName;
 
 export const isFromSourceSubreddit = (subredditName: string): boolean =>
-  subredditName.toLowerCase() === SOURCE_SUBREDDIT.toLowerCase();
+  subredditName.toLowerCase() === getSourceSubreddit().toLowerCase();

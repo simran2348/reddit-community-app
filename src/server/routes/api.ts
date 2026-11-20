@@ -11,7 +11,7 @@ import type {
 import { isRankingPeriod } from '../../shared/api';
 import { getRankings } from '../core/rankings';
 import { getCommunitySettings } from '../core/settings';
-import { SOURCE_SUBREDDIT } from '../core/source';
+import { getSourceSubreddit } from '../core/source';
 import {
   getCompetition,
   getVoteCounts,
@@ -41,7 +41,7 @@ api.get('/config', async (c) => {
   try {
     const { competitionEnabled } = await getCommunitySettings();
     return c.json<ConfigResponse>({
-      subreddit: SOURCE_SUBREDDIT,
+      subreddit: getSourceSubreddit(),
       competitionEnabled,
     });
   } catch (error) {

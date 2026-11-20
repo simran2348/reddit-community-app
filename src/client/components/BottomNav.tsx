@@ -7,8 +7,10 @@ type BottomNavProps = {
   active: NavTarget;
   /** Current ranking period, shown next to the podium (e.g. "This week"). */
   periodLabel: string;
-  /** Shows a red dot on the trophy while a competition is running. */
+  /** A competition is running (used for the accessible label). */
   competitionLive: boolean;
+  /** Pulse behind the trophy: live competition and not on that screen. */
+  competitionPulse: boolean;
   onSelect: (target: NavTarget) => void;
 };
 
@@ -53,10 +55,16 @@ const CogIcon = () => (
 
 /**
  * Bottom navigation: rankings (podium + current period), competition
- * (trophy, red dot while live) and settings (cog).
+ * (trophy, pulsing while live and not open) and settings (cog).
  */
 export const BottomNav = memo(
-  ({ active, periodLabel, competitionLive, onSelect }: BottomNavProps) => (
+  ({
+    active,
+    periodLabel,
+    competitionLive,
+    competitionPulse,
+    onSelect,
+  }: BottomNavProps) => (
     <nav className="bottom-nav" aria-label="Sections">
       <button
         type="button"
@@ -79,11 +87,10 @@ export const BottomNav = memo(
         }
         onClick={() => onSelect('competition')}
       >
-        <span className="bottom-nav__icon">
+        <span
+          className={`bottom-nav__icon${competitionPulse ? ' is-pulsing' : ''}`}
+        >
           <TrophyIcon />
-          {competitionLive && (
-            <span className="bottom-nav__dot" aria-hidden="true" />
-          )}
         </span>
       </button>
 

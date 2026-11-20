@@ -57,14 +57,27 @@ export const getPostImage = (post: Post): PostImage | null => {
 };
 
 /**
+ * Deleted by its author. Reddit can still return such a post by ID or in a
+ * listing (author shown as "[deleted]"), so a missed delete trigger would
+ * otherwise leave it visible.
+ */
+const isDeletedPost = (post: Post): boolean =>
+  post.authorName === '[deleted]' || post.removedByCategory === 'deleted';
+
+/**
  * Posts that should never be surfaced in the dashboard. `post.hidden` is not
  * checked: it's a per-account "hide" preference, not a moderation state.
  */
 export const isHiddenPost = (post: Post): boolean =>
-  post.removed || post.spam || post.nsfw || post.quarantined;
+  isDeletedPost(post) ||
+  post.removed ||
+  post.spam ||
+  post.nsfw ||
+  post.quarantined;
 
 /** Why a post was excluded, for diagnostics; null when it's displayable. */
 export const hiddenReason = (post: Post): string | null => {
+  if (isDeletedPost(post)) return 'deleted by author';
   if (post.removed) return 'removed';
   if (post.spam) return 'spam';
   if (post.nsfw) return 'nsfw';

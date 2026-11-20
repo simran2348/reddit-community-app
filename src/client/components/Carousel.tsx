@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CSSProperties, PointerEvent, ReactNode } from 'react';
 import { CarouselControls } from './CarouselControls';
 import { useCarousel } from '../hooks/useCarousel';
+import type { CarouselDirection } from '../hooks/useCarousel';
 import { useDocumentHidden } from '../hooks/useDocumentHidden';
 
 type CarouselProps<T> = {
@@ -22,10 +23,23 @@ type SlidePosition =
  * Signed distance from the front card around the loop, taking the shorter
  * way. With 10 items and item 1 in front, item 10 is -1 (left) and item 2
  * is +1 (right).
+ *
+ * A card exactly halfway round (with 2 items, the other one) is equally far
+ * both ways, so it goes to the side we just came from: after moving forward
+ * it exits left, after moving back it exits right, and it starts on the right.
  */
-const loopOffset = (i: number, index: number, count: number): number => {
+const loopOffset = (
+  i: number,
+  index: number,
+  count: number,
+  direction: CarouselDirection,
+  loops: boolean
+): number => {
   if (count === 0) return 0;
+  // Short lists don't loop: cards simply sit in order.
+  if (!loops) return i - index;
   const forward = (((i - index) % count) + count) % count;
+  if (forward * 2 === count) return direction === 1 ? -forward : forward;
   return forward > count / 2 ? forward - count : forward;
 };
 
@@ -53,7 +67,7 @@ export const Carousel = <T,>({
   const carousel = useCarousel(items.length);
   const [hovered, setHovered] = useState(false);
   const documentHidden = useDocumentHidden();
-  const { index, goTo } = carousel;
+  const { index, next, goTo, canNext } = carousel;
   const count = items.length;
 
   // Auto-play: one timeout per slide, so any manual change restarts the
@@ -64,11 +78,11 @@ export const Carousel = <T,>({
 
   useEffect(() => {
     if (!autoplayActive || autoplayMs === null) return;
-    const timer = window.setTimeout(() => {
-      goTo(index + 1 >= count ? 0 : index + 1);
-    }, autoplayMs);
+    // On a short, non-looping list the last image rewinds to the first.
+    const advance = canNext ? next : () => goTo(0, -1);
+    const timer = window.setTimeout(advance, autoplayMs);
     return () => window.clearTimeout(timer);
-  }, [autoplayActive, autoplayMs, index, count, goTo]);
+  }, [autoplayActive, autoplayMs, index, next, goTo, canNext]);
 
   const onPointerEnter = (event: PointerEvent<HTMLElement>) => {
     if (event.pointerType === 'mouse') setHovered(true);
@@ -92,7 +106,13 @@ export const Carousel = <T,>({
         >
           <ul className="carousel__cards">
             {items.map((item, i) => {
-              const offset = loopOffset(i, carousel.index, items.length);
+              const offset = loopOffset(
+                i,
+                carousel.index,
+                items.length,
+                carousel.direction,
+                carousel.loops
+              );
               const position = positionFor(offset);
               const isActive = position === 'active';
               const isNeighbour = position === 'prev' || position === 'next';
@@ -124,7 +144,9 @@ export const Carousel = <T,>({
                       className="carousel__card-hit"
                       tabIndex={-1}
                       aria-label={`Show ${label} ${i + 1}`}
-                      onClick={() => carousel.selectFromTap(i)}
+                      onClick={() =>
+                        carousel.selectFromTap(i, offset < 0 ? -1 : 1)
+                      }
                     />
                   )}
                 </li>

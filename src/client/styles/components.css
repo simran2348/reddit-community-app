@@ -20,10 +20,12 @@
     rgb(0 0 0 / 0) 100%
   );
   --app-pad-x: clamp(var(--space-3), 3vw, var(--space-5));
-  --app-pad-y: var(--space-2);
+  --app-pad-y: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  /* Same as the top padding, so the carousel has equal space above and
+     below (the nav bar bleeds into the bottom padding). */
+  gap: var(--app-pad-y);
   height: 100%;
   max-width: 960px;
   margin: 0 auto;
@@ -1033,14 +1035,6 @@
     visibility 0s;
 }
 
-.settings__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: none;
-  padding: var(--space-1) 0 var(--space-3);
-}
-
 .settings__title {
   padding: 4px var(--space-3);
   border-radius: var(--radius-pill);
@@ -1360,15 +1354,17 @@
 
 /* ---------- Bottom navigation ---------- */
 
+/* Edge-to-edge bar: bleeds through the app's side and bottom padding. */
 .bottom-nav {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-1);
   flex: none;
-  padding: var(--space-1);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
-  box-shadow: 0 2px 12px rgb(0 0 0 / 0.12);
+  margin: 0 calc(-1 * var(--app-pad-x)) calc(-1 * var(--app-pad-y));
+  padding: 6px var(--app-pad-x);
+  background: var(--nav-bg);
+  border-top: 1px solid var(--nav-border);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.08);
 }
 
 .bottom-nav__item {
@@ -1419,14 +1415,62 @@
   line-height: 0;
 }
 
-/* Live competition indicator. */
-.bottom-nav__dot {
+/* Live competition: two staggered orange rings expand and fade behind the
+   trophy, easing out so each ripple slows as it disappears. */
+.bottom-nav__icon svg {
+  position: relative;
+  z-index: 1;
+}
+
+.bottom-nav__icon.is-pulsing {
+  color: var(--accent-apps);
+}
+
+.bottom-nav__icon.is-pulsing::before,
+.bottom-nav__icon.is-pulsing::after {
+  content: '';
   position: absolute;
-  top: -2px;
-  right: -3px;
-  width: 9px;
-  height: 9px;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
   border-radius: 50%;
-  background: #e5322d;
-  box-shadow: 0 0 0 2px var(--surface-raised);
+  background: var(--accent-apps);
+  opacity: 0;
+  animation: nav-pulse 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+.bottom-nav__icon.is-pulsing::after {
+  animation-delay: 1.2s;
+}
+
+@keyframes nav-pulse {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.5;
+  }
+  70% {
+    opacity: 0.08;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav__icon.is-pulsing::before {
+    animation: none;
+    transform: scale(0.9);
+    opacity: 0.18;
+  }
+  .bottom-nav__icon.is-pulsing::after {
+    display: none;
+  }
+}
+
+/* The panel takes focus when opened; no outline around the whole screen. */
+.settings:focus {
+  outline: none;
 }

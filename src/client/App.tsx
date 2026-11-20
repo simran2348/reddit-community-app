@@ -101,6 +101,7 @@ export const App = () => {
         active={navActive}
         periodLabel={PERIOD_LABEL[prefs.period]}
         competitionLive={competitionEnabled}
+        competitionPulse={competitionEnabled && navActive !== 'competition'}
         onSelect={selectNav}
       />
     </div>
