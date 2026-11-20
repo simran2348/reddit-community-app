@@ -6,7 +6,13 @@ import type {
   ViewerVoteState,
 } from '../../shared/api';
 import { CompetitionCarousel } from '../components/CompetitionCarousel';
-import { EmptyState, ErrorState, LoadingState } from '../components/States';
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  MIN_LOADING_MS,
+} from '../components/States';
+import { useMinimumDuration } from '../hooks/useMinimumDuration';
 import type { VoteButtonState } from '../components/VoteButton';
 import {
   fetchCompetition,
@@ -148,6 +154,12 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
     [data, pendingId]
   );
 
+  // The loader stays for at least 5s, longer if the request is slower.
+  const showLoader = useMinimumDuration(
+    state.status === 'loading',
+    MIN_LOADING_MS
+  );
+
   return (
     <section
       className="screen screen--competition"
@@ -155,22 +167,14 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
       aria-label="Photo competition"
     >
       <div className="screen__body">
-        {state.status === 'loading' && <LoadingState label="Loading entries" />}
-        {state.status === 'error' && (
+        {showLoader && <LoadingState label="Loading entries" />}
+        {!showLoader && state.status === 'error' && (
           <ErrorState message={state.message} onRetry={retry} />
         )}
-        {data && data.entries.length === 0 && (
-          <EmptyState
-            icon="📸"
-            title="No entries yet"
-            message={
-              data.flair
-                ? `Submit an image post with the "${data.flair}" flair in r/${data.subreddit} to enter.`
-                : `No recent image posts in r/${data.subreddit}.`
-            }
-          />
+        {!showLoader && data && data.entries.length === 0 && (
+          <EmptyState icon="📸" title="No entries yet" />
         )}
-        {data && data.entries.length > 0 && (
+        {!showLoader && data && data.entries.length > 0 && (
           <CompetitionCarousel
             entries={data.entries}
             getVoteState={getVoteState}

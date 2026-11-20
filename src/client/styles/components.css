@@ -909,9 +909,25 @@
   flex: 1;
   min-height: 0;
   padding: var(--space-4);
-  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-lg);
+  /* Soft blur of the background photo behind loading/empty/error states. */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   text-align: center;
+}
+
+/* Small dark translucent card centred in the blurred area, so the text stays
+   readable over the background photo in light and dark mode alike. */
+.state__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: rgb(0 0 0 / 0.6);
+  border-radius: var(--radius-lg);
+  color: #ffffff;
 }
 
 .state__icon {
@@ -926,41 +942,152 @@
 .state__message {
   max-width: 320px;
   font-size: 13px;
-  color: var(--text-muted);
+  color: rgb(255 255 255 / 0.8);
 }
 
 .state .button {
   margin-top: var(--space-2);
 }
 
-/* Carousel-shaped loading skeleton */
+/* ---------- Camera loader ----------
+   Orange line-art camera on the dark state card. Each outline path has
+   pathLength=1, so one keyframe traces every stroke in, holds, and erases it
+   (2.5s loop = two full cycles in the 5s minimum). The two lens rings are
+   dashed circles (pathLength=100) spinning in opposite directions. */
 
-.skeleton-card {
+.camera-loader {
+  --camera-stroke: #ff6a1f;
   display: block;
-  height: 100%;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  animation: pulse 1.4s ease-in-out infinite;
+  width: 96px;
+  height: auto;
+  overflow: visible;
+  fill: none;
+  stroke: var(--camera-stroke);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.carousel--skeleton .carousel__card.is-prev,
-.carousel--skeleton .carousel__card.is-next {
-  filter: brightness(0.85);
+.camera-loader__outline path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: camera-draw 2.5s ease-in-out infinite;
 }
 
-.carousel-nav.is-skeleton {
-  opacity: 0.35;
-  pointer-events: none;
+.camera-loader__lens {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.skeleton-position {
-  display: block;
-  width: 44px;
-  height: 20px;
-  padding: 0;
-  background: var(--surface);
-  animation: pulse 1.4s ease-in-out infinite;
+/* Lens rings and the small bottom-left ring are open arcs that close into
+   full circles as the outline finishes drawing (40%), stay closed while it
+   holds, and reopen as it erases. Same 2.5s cycle as the outline. The lens
+   rings also spin in opposite directions. */
+.camera-loader__lens--outer {
+  stroke-dasharray: 84 16;
+  animation:
+    camera-spin 2.5s linear infinite,
+    camera-close-outer 2.5s ease-in-out infinite;
+}
+
+.camera-loader__lens--inner {
+  stroke-dasharray: 82 18;
+  animation:
+    camera-spin-reverse 2.5s linear infinite,
+    camera-close-inner 2.5s ease-in-out infinite;
+}
+
+.camera-loader__ring {
+  stroke-dasharray: 58 42;
+  animation: camera-close-ring 2.5s ease-in-out infinite;
+}
+
+.camera-loader__ring--top {
+  stroke-dasharray: 50 50;
+  animation-name: camera-close-top;
+}
+
+@keyframes camera-draw {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  40%,
+  75% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+
+@keyframes camera-close-outer {
+  0%,
+  100% {
+    stroke-dasharray: 84 16;
+  }
+  40%,
+  75% {
+    stroke-dasharray: 100 0;
+  }
+}
+
+@keyframes camera-close-inner {
+  0%,
+  100% {
+    stroke-dasharray: 82 18;
+  }
+  40%,
+  75% {
+    stroke-dasharray: 100 0;
+  }
+}
+
+@keyframes camera-close-ring {
+  0%,
+  100% {
+    stroke-dasharray: 58 42;
+  }
+  40%,
+  75% {
+    stroke-dasharray: 100 0;
+  }
+}
+
+@keyframes camera-close-top {
+  0%,
+  100% {
+    stroke-dasharray: 50 50;
+  }
+  40%,
+  75% {
+    stroke-dasharray: 100 0;
+  }
+}
+
+@keyframes camera-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes camera-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Show the finished camera, rings closed, without motion. */
+  .camera-loader__outline path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .camera-loader__lens--outer,
+  .camera-loader__lens--inner,
+  .camera-loader__ring {
+    animation: none;
+    stroke-dasharray: none;
+  }
 }
 
 @keyframes pulse {

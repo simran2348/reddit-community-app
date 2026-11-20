@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { RankingPeriod, RankingsResponse } from '../../shared/api';
-import { EmptyState, ErrorState, LoadingState } from '../components/States';
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  MIN_LOADING_MS,
+} from '../components/States';
 import { TopImagesCarousel } from '../components/TopImagesCarousel';
-import { PERIOD_TEXT } from '../periods';
+import { useMinimumDuration } from '../hooks/useMinimumDuration';
 import { clearRankingsCache, fetchRankings } from '../services/rankingService';
 
 type Result =
@@ -66,6 +71,9 @@ export const TopImagesScreen = ({
   }, [period]);
 
   const result = results[period];
+  // The loader stays for at least 5s, longer if the request is slower.
+  const showLoader = useMinimumDuration(!result, MIN_LOADING_MS);
+  const shown = showLoader ? undefined : result;
 
   return (
     <section
@@ -74,21 +82,17 @@ export const TopImagesScreen = ({
       aria-label="Top posts"
     >
       <div className="screen__body">
-        {!result && <LoadingState label="Loading top images" />}
-        {result?.status === 'error' && (
-          <ErrorState message={result.message} onRetry={retry} />
+        {showLoader && <LoadingState label="Loading top images" />}
+        {shown?.status === 'error' && (
+          <ErrorState message={shown.message} onRetry={retry} />
         )}
-        {result?.status === 'success' && result.data.images.length === 0 && (
-          <EmptyState
-            icon="🖼️"
-            title="No images yet"
-            message={`No image posts in r/${result.data.subreddit} from ${PERIOD_TEXT[period]}.`}
-          />
+        {shown?.status === 'success' && shown.data.images.length === 0 && (
+          <EmptyState icon="🖼️" title="No images yet" />
         )}
-        {result?.status === 'success' && result.data.images.length > 0 && (
+        {shown?.status === 'success' && shown.data.images.length > 0 && (
           <TopImagesCarousel
             key={period}
-            images={result.data.images}
+            images={shown.data.images}
             autoplayMs={autoplayMs}
             paused={paused}
           />

@@ -13,6 +13,7 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
   - Each image has its own `3 / 10` tag in its top-right corner that moves with it and fades in when it reaches the front.
 - **Post details on the image:** the avatar, title, upvotes and comments sit on a smooth dark fade at the bottom of the front photo.
 - **Auto-play:** optional, every 3 or 5 seconds. It pauses on hover, while settings are open, or when the app is in the background.
+- **Loading, empty and error states** share one blurred panel. While loading it shows an orange line-art camera (SVG + CSS: the outline draws itself in, the lens rings spin, and the open rings close into full circles at the end of each cycle) on the dark card. The loader stays at least 5 seconds, longer if the data is slower (`useMinimumDuration`). Then the images replace it, or a small dark card appears in the middle with the icon and title (error states add a message and "Try again").
 - **Bottom navigation bar** (edge to edge, solid background):
   - 🏆 *Podium + current period* ("This week"): the top posts carousel.
   - *Trophy*: the photo competition. While a competition is running, an orange pulse ripples behind the icon whenever you're on another screen. When it's turned off, the screen shows "No competition right now".

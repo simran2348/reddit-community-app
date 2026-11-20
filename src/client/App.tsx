@@ -81,7 +81,6 @@ export const App = () => {
                   <EmptyState
                     icon="🏆"
                     title="No competition right now"
-                    message="Check back when the next photo competition starts."
                   />
                 )}
               </div>
