@@ -1,14 +1,17 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type {
+  CommunityResponse,
   CompetitionResponse,
   ConfigResponse,
   ErrorResponse,
+  JoinResponse,
   RankingsResponse,
   VoteCountsResponse,
   VoteResponse,
 } from '../../shared/api';
 import { isRankingPeriod } from '../../shared/api';
+import { getCommunity, joinCommunity } from '../core/community';
 import { getRankings } from '../core/rankings';
 import { getCommunitySettings } from '../core/settings';
 import { getSourceSubreddit } from '../core/source';
@@ -46,6 +49,35 @@ api.get('/config', async (c) => {
     });
   } catch (error) {
     return handleError(c, error, 'Could not load settings.');
+  }
+});
+
+/** GET /api/community – banner, icon and members for the Settings screen. */
+api.get('/community', async (c) => {
+  try {
+    return c.json<CommunityResponse>(await getCommunity());
+  } catch (error) {
+    return handleError(c, error, 'Could not load community info.');
+  }
+});
+
+/** POST /api/community/join – join the community as the viewer. */
+api.post('/community/join', async (c) => {
+  try {
+    const joined = await joinCommunity();
+    if (!joined) {
+      return c.json<ErrorResponse>(
+        {
+          status: 'error',
+          code: 'NOT_LOGGED_IN',
+          message: 'Log in to join the community.',
+        },
+        401
+      );
+    }
+    return c.json<JoinResponse>({ joined: true });
+  } catch (error) {
+    return handleError(c, error, 'Could not join the community.');
   }
 });
 

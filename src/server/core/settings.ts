@@ -2,21 +2,26 @@ import { settings } from '@devvit/web/server';
 
 export type CommunitySettings = {
   competitionEnabled: boolean;
+  /** Top posts also ranks text posts (never the competition). */
+  rankingsIncludeText: boolean;
   /** Flair for competition entries; null means every image post is eligible. */
   competitionFlair: string | null;
 };
 
 export const getCommunitySettings = async (): Promise<CommunitySettings> => {
-  const [competitionEnabled, competitionFlair] = await Promise.all([
-    settings.get<boolean>('competitionEnabled'),
-    settings.get<string>('competitionFlair'),
-  ]);
+  const [competitionEnabled, competitionFlair, rankingsIncludeText] =
+    await Promise.all([
+      settings.get<boolean>('competitionEnabled'),
+      settings.get<string>('competitionFlair'),
+      settings.get<boolean>('rankingsIncludeText'),
+    ]);
 
   const flair =
     typeof competitionFlair === 'string' ? competitionFlair.trim() : '';
 
   return {
     competitionEnabled: competitionEnabled === true,
+    rankingsIncludeText: rankingsIncludeText === true,
     competitionFlair: flair.length > 0 ? flair : null,
   };
 };

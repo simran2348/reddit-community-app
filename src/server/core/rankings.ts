@@ -7,15 +7,31 @@ import type {
 } from '../../shared/api';
 import { cached } from './cache';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
+import { getCommunitySettings } from './settings';
 import { getSourceSubreddit } from './source';
 
 const TOP_COUNT = 10;
 const SCAN_LIMIT = 100;
 const CACHE_TTL_SECONDS = 10 * 60;
+/** Characters of a text post's body sent for its card. */
+const BODY_EXCERPT_LENGTH = 400;
+
+type Ranked = { post: Post; imageUrl: string | null; body: string | null };
+
+/** Self (text) post: its URL is its own comments page. */
+const isTextPost = (post: Post): boolean =>
+  post.url.includes(post.permalink) || post.url.length === 0;
+
+const excerpt = (text: string | undefined): string | null => {
+  const trimmed = (text ?? '').replace(/\s+/g, ' ').trim();
+  if (trimmed.length === 0) return null;
+  return trimmed.length > BODY_EXCERPT_LENGTH
+    ? `${trimmed.slice(0, BODY_EXCERPT_LENGTH).trimEnd()}…`
+    : trimmed;
+};
 
 const toRanking = (
-  post: Post,
-  imageUrl: string,
+  { post, imageUrl, body }: Ranked,
   authorAvatarUrl: string | null,
   rank: number,
   period: RankingPeriod
@@ -25,6 +41,7 @@ const toRanking = (
   author: post.authorName,
   authorAvatarUrl,
   imageUrl,
+  body,
   score: post.score,
   commentCount: post.numberOfComments,
   rank,
@@ -43,10 +60,14 @@ const getAvatarUrl = async (username: string): Promise<string | null> => {
   }
 };
 
-/** Top image posts in the subreddit for the period, ranked by upvotes. */
+/**
+ * Top posts in the subreddit for the period, ranked by upvotes: image posts,
+ * plus text posts when the mods turn that on.
+ */
 const loadRankings = async (
   subreddit: string,
-  period: RankingPeriod
+  period: RankingPeriod,
+  includeText: boolean
 ): Promise<RankingsResponse> => {
   const posts = await reddit
     .getTopPosts({
@@ -56,7 +77,7 @@ const loadRankings = async (
     })
     .all();
 
-  const top: { post: Post; imageUrl: string }[] = [];
+  const top: Ranked[] = [];
   const sorted = posts
     .filter((post) => !isHiddenPost(post) && !post.stickied)
     .sort((a, b) => b.score - a.score);
@@ -64,15 +85,18 @@ const loadRankings = async (
   for (const post of sorted) {
     if (top.length >= TOP_COUNT) break;
     const image = getPostImage(post);
-    if (image) top.push({ post, imageUrl: image.url });
+    if (image) top.push({ post, imageUrl: image.url, body: null });
+    else if (includeText && isTextPost(post)) {
+      top.push({ post, imageUrl: null, body: excerpt(post.body) });
+    }
   }
 
   const avatars = await Promise.all(
     top.map(({ post }) => getAvatarUrl(post.authorName))
   );
 
-  const images = top.map(({ post, imageUrl }, i) =>
-    toRanking(post, imageUrl, avatars[i] ?? null, i + 1, period)
+  const images = top.map((entry, i) =>
+    toRanking(entry, avatars[i] ?? null, i + 1, period)
   );
 
   return {
@@ -83,14 +107,16 @@ const loadRankings = async (
   };
 };
 
-export const getRankings = (
+export const getRankings = async (
   period: RankingPeriod
 ): Promise<RankingsResponse> => {
   const subreddit = getSourceSubreddit();
+  const { rankingsIncludeText } = await getCommunitySettings();
+  const kind = rankingsIncludeText ? 'all' : 'images';
   return cached(
-    `rankings:images:v2:${subreddit.toLowerCase()}:${period}`,
+    `rankings:${kind}:v3:${subreddit.toLowerCase()}:${period}`,
     CACHE_TTL_SECONDS,
-    () => loadRankings(subreddit, period),
+    () => loadRankings(subreddit, period, rankingsIncludeText),
     (result) => result.images.length > 0
   );
 };

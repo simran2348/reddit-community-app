@@ -18,8 +18,16 @@ import {
   fetchCompetition,
   fetchVoteCounts,
 } from '../services/competitionService';
+import { imagesToPreload, preloadImages } from '../preloadImages';
 import { ApiError } from '../services/http';
 import { submitVote } from '../services/votingService';
+
+/**
+ * Up to this many entries, every image is downloaded before the screen opens.
+ * Competitions can have hundreds of entries, so beyond this only the first
+ * visible cards are waited for.
+ */
+const MAX_ENTRIES_TO_PRELOAD = 20;
 
 type LoadState =
   | { status: 'loading' }
@@ -53,7 +61,15 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
   useEffect(() => {
     let cancelled = false;
     fetchCompetition()
-      .then((data) => {
+      .then(async (data) => {
+        // Keep the camera loader up until the entry images are ready (all of
+        // them for up to 20 entries; otherwise the ones shown first).
+        await preloadImages(
+          imagesToPreload(
+            data.entries.map((entry) => entry.imageUrl),
+            MAX_ENTRIES_TO_PRELOAD
+          )
+        );
         if (cancelled) return;
         loadedOnce.current = true;
         setState({ status: 'success', data });

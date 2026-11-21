@@ -2,26 +2,25 @@ import { useCallback, useState } from 'react';
 import type { RankingPeriod } from '../shared/api';
 import { isRankingPeriod } from '../shared/api';
 
-export type AutoplaySeconds = 3 | 5;
+export type SlideshowSeconds = 3 | 5;
 
-export const AUTOPLAY_OPTIONS: readonly AutoplaySeconds[] = [3, 5];
+export const SLIDESHOW_OPTIONS: readonly SlideshowSeconds[] = [3, 5];
 
 /** Per-viewer display preferences (never shared, never sent to the server). */
 export type Preferences = {
   period: RankingPeriod;
-  autoplay: boolean;
-  autoplaySeconds: AutoplaySeconds;
+  /** Time per image in the slideshow. */
+  slideshowSeconds: SlideshowSeconds;
 };
 
 const STORAGE_KEY = 'leaderboard:preferences';
 
 const DEFAULTS: Preferences = {
   period: 'week',
-  autoplay: false,
-  autoplaySeconds: 5,
+  slideshowSeconds: 5,
 };
 
-const isAutoplaySeconds = (value: unknown): value is AutoplaySeconds =>
+const isSlideshowSeconds = (value: unknown): value is SlideshowSeconds =>
   value === 3 || value === 5;
 
 /** Validates each field so a stale or tampered value falls back safely. */
@@ -35,14 +34,18 @@ const parse = (raw: string | null): Preferences => {
   }
   if (typeof data !== 'object' || data === null) return DEFAULTS;
   const period = 'period' in data ? data.period : undefined;
-  const autoplay = 'autoplay' in data ? data.autoplay : undefined;
-  const seconds = 'autoplaySeconds' in data ? data.autoplaySeconds : undefined;
+  // Older versions stored the interval as `autoplaySeconds`.
+  const seconds =
+    'slideshowSeconds' in data
+      ? data.slideshowSeconds
+      : 'autoplaySeconds' in data
+        ? data.autoplaySeconds
+        : undefined;
   return {
     period: isRankingPeriod(period) ? period : DEFAULTS.period,
-    autoplay: typeof autoplay === 'boolean' ? autoplay : DEFAULTS.autoplay,
-    autoplaySeconds: isAutoplaySeconds(seconds)
+    slideshowSeconds: isSlideshowSeconds(seconds)
       ? seconds
-      : DEFAULTS.autoplaySeconds,
+      : DEFAULTS.slideshowSeconds,
   };
 };
 

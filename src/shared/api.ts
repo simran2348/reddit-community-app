@@ -22,7 +22,10 @@ export type ImageRanking = {
   author: string;
   /** Author's snoovatar, or null when they don't have one. */
   authorAvatarUrl: string | null;
-  imageUrl: string;
+  /** Post image; null for text posts (only when mods include them). */
+  imageUrl: string | null;
+  /** Start of the post's text, for text posts; null for image posts. */
+  body: string | null;
   /** Reddit upvote score of the post. */
   score: number;
   commentCount: number;
@@ -105,3 +108,19 @@ export type ErrorResponse = {
   code: VoteErrorCode;
   message: string;
 };
+
+/** The community the app is installed in, for the Settings screen header. */
+export type CommunityResponse = {
+  name: string;
+  title: string | null;
+  iconUrl: string | null;
+  bannerUrl: string | null;
+  /** Banner colour, used when there's no banner image. */
+  bannerColor: string | null;
+  members: number;
+  isLoggedIn: boolean;
+  /** Joined through this app's button (Reddit doesn't expose membership). */
+  joined: boolean;
+};
+
+export type JoinResponse = { joined: true };

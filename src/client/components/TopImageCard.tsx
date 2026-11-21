@@ -1,11 +1,11 @@
 import { memo, useState } from 'react';
+import { ArrowBigUp, MessageSquare, Quote } from 'lucide-react';
 import { navigateTo } from '@devvit/web/client';
 import type { ImageRanking } from '../../shared/api';
 import { formatCount } from '../format';
 
 type TopImageCardProps = {
   image: ImageRanking;
-  isActive: boolean;
 };
 
 type ImageStatus = 'loading' | 'loaded' | 'error';
@@ -14,7 +14,7 @@ type ImageStatus = 'loading' | 'loaded' | 'error';
 const DEFAULT_AVATAR = '/snoo.png';
 
 /** The author's snoovatar, falling back to the default Snoo. */
-const Avatar = ({ url }: { url: string | null }) => {
+export const Avatar = ({ url }: { url: string | null }) => {
   const [failed, setFailed] = useState(false);
   const useDefault = !url || failed;
   // The circle is a clipping wrapper so the default Snoo can be zoomed
@@ -49,27 +49,14 @@ const PostDetails = ({ image }: { image: ImageRanking }) => (
       <p className="post-details__meta">
         <span className="post-details__author">u/{image.author}</span>
         <span className="post-details__stat" title={`${image.score} upvotes`}>
-          <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 4l8 9h-5v7H9v-7H4z" fill="currentColor" />
-          </svg>
+          <ArrowBigUp size={14} aria-hidden="true" />
           {formatCount(image.score)}
         </span>
         <span
           className="post-details__stat"
           title={`${image.commentCount} comments`}
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M4 5h16v11H9l-5 4z" />
-          </svg>
+          <MessageSquare size={12} strokeWidth={2.5} aria-hidden="true" />
           {formatCount(image.commentCount)}
         </span>
       </p>
@@ -77,13 +64,7 @@ const PostDetails = ({ image }: { image: ImageRanking }) => (
   </div>
 );
 
-const Photo = ({
-  image,
-  isActive,
-}: {
-  image: ImageRanking;
-  isActive: boolean;
-}) => {
+const Photo = ({ image, src }: { image: ImageRanking; src: string }) => {
   const [status, setStatus] = useState<ImageStatus>('loading');
   return (
     <div className={`cover-card is-${status}`}>
@@ -92,9 +73,9 @@ const Photo = ({
       ) : (
         <img
           className="cover-card__image"
-          src={image.imageUrl}
+          src={src}
           alt={`#${image.rank}: ${image.title} by u/${image.author}`}
-          loading={isActive ? 'eager' : 'lazy'}
+          loading="eager"
           decoding="async"
           draggable={false}
           onLoad={() => setStatus('loaded')}
@@ -105,17 +86,27 @@ const Photo = ({
   );
 };
 
+/**
+ * Text post (only when mods include them in Top posts): the start of the
+ * post's text on a dark card, or the title when the post has no body. The
+ * usual details still sit at the bottom.
+ */
+const TextBody = ({ image }: { image: ImageRanking }) => (
+  <div className="text-card">
+    <Quote className="text-card__mark" size={22} aria-hidden="true" />
+    <p className={`text-card__text${image.body ? '' : ' is-title'}`}>
+      {image.body ?? image.title}
+    </p>
+  </div>
+);
+
 /** Image card with the post details overlaid on a fade at the bottom. */
-export const TopImageCard = memo(({ image, isActive }: TopImageCardProps) => (
+export const TopImageCard = memo(({ image }: TopImageCardProps) => (
   <div className="overlay-card">
-    <Photo image={image} isActive={isActive} />
-    {image.rank <= 3 && (
-      <img
-        className="rank-medal"
-        src={`/p${image.rank}.png`}
-        alt={`Rank ${image.rank}`}
-        draggable={false}
-      />
+    {image.imageUrl ? (
+      <Photo image={image} src={image.imageUrl} />
+    ) : (
+      <TextBody image={image} />
     )}
     <div className="overlay-card__details">
       <PostDetails image={image} />

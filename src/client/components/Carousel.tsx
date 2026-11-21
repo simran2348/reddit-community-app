@@ -14,6 +14,8 @@ type CarouselProps<T> = {
   autoplayMs?: number | null;
   /** Externally paused (e.g. settings open or another tab showing). */
   paused?: boolean;
+  /** Extra controls in the frame's top-right gutter, given the front index. */
+  renderActions?: ((index: number) => ReactNode) | undefined;
 };
 
 type SlidePosition =
@@ -63,6 +65,7 @@ export const Carousel = <T,>({
   label,
   autoplayMs = null,
   paused = false,
+  renderActions,
 }: CarouselProps<T>) => {
   const carousel = useCarousel(items.length);
   const [hovered, setHovered] = useState(false);
@@ -154,6 +157,9 @@ export const Carousel = <T,>({
             })}
           </ul>
         </div>
+        {renderActions && (
+          <div className="carousel__actions">{renderActions(index)}</div>
+        )}
         <CarouselControls
           canPrev={carousel.canPrev}
           canNext={carousel.canNext}

@@ -367,12 +367,13 @@ export const getCompetition = async (): Promise<CompetitionResponse> => {
     readViewer(flair, cachedEntries),
   ]);
 
-  const entries: CompetitionEntry[] = cachedEntries.map(
-    ({ authorId: _authorId, ...entry }) => ({
+  // Most votes first; ties keep the cached newest-first order (stable sort).
+  const entries: CompetitionEntry[] = cachedEntries
+    .map(({ authorId: _authorId, ...entry }) => ({
       ...entry,
       voteCount: counts[entry.id] ?? 0,
-    })
-  );
+    }))
+    .sort((a, b) => b.voteCount - a.voteCount);
 
   return { subreddit: getSourceSubreddit(), flair, entries, viewer };
 };

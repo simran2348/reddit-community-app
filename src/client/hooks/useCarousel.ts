@@ -26,9 +26,19 @@ type CarouselState = { index: number; direction: CarouselDirection };
  * Touch input uses touch events (the most reliable in embedded webviews);
  * mouse and pen use pointer events.
  */
-export const useCarousel = (count: number) => {
+type CarouselOptions = {
+  /** Loop even with fewer than MIN_LOOP_COUNT items (e.g. the slideshow). */
+  alwaysLoop?: boolean;
+  /** Slide shown first. */
+  initialIndex?: number;
+};
+
+export const useCarousel = (
+  count: number,
+  { alwaysLoop = false, initialIndex = 0 }: CarouselOptions = {}
+) => {
   const [state, setState] = useState<CarouselState>({
-    index: 0,
+    index: initialIndex,
     direction: 0,
   });
   const gesture = useRef<Gesture | null>(null);
@@ -37,7 +47,7 @@ export const useCarousel = (count: number) => {
   // Clamp during render so a shrinking list never leaves us out of range.
   const index = count === 0 ? 0 : Math.min(state.index, count - 1);
   const direction = state.direction;
-  const loops = count >= MIN_LOOP_COUNT;
+  const loops = alwaysLoop ? count > 1 : count >= MIN_LOOP_COUNT;
 
   /**
    * Jump to a slide. The direction decides which side cards that are equally
@@ -54,7 +64,7 @@ export const useCarousel = (count: number) => {
         const inferred: CarouselDirection =
           forward === 0
             ? current.direction
-            : count < MIN_LOOP_COUNT
+            : !(alwaysLoop || count >= MIN_LOOP_COUNT)
               ? clamped > from
                 ? 1
                 : -1
@@ -64,7 +74,7 @@ export const useCarousel = (count: number) => {
         return { index: clamped, direction: towards ?? inferred };
       });
     },
-    [count]
+    [count, alwaysLoop]
   );
 
   // With 4+ images the carousel loops: before the first image comes the

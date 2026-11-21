@@ -8,15 +8,15 @@ import type { VoteButtonState } from './VoteButton';
 type CompetitionCardProps = {
   entry: CompetitionEntry;
   voteState: VoteButtonState;
-  /** Only the active slide eagerly loads its full image. */
-  isActive: boolean;
+  /** Medal place (1-3) by votes, or null for no medal. */
+  medal: number | null;
   onVote: (postId: string) => void;
 };
 
 type ImageStatus = 'loading' | 'loaded' | 'error';
 
 export const CompetitionCard = memo(
-  ({ entry, voteState, isActive, onVote }: CompetitionCardProps) => {
+  ({ entry, voteState, medal, onVote }: CompetitionCardProps) => {
     const [imageStatus, setImageStatus] = useState<ImageStatus>('loading');
 
     return (
@@ -29,11 +29,19 @@ export const CompetitionCard = memo(
               className="photo-card__image"
               src={entry.imageUrl}
               alt={entry.title}
-              loading={isActive ? 'eager' : 'lazy'}
+              loading="eager"
               decoding="async"
               draggable={false}
               onLoad={() => setImageStatus('loaded')}
               onError={() => setImageStatus('error')}
+            />
+          )}
+          {medal !== null && (
+            <img
+              className="rank-medal"
+              src={`/p${medal}.png`}
+              alt={`Place ${medal} by votes`}
+              draggable={false}
             />
           )}
         </div>

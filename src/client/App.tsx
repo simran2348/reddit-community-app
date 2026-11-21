@@ -65,9 +65,7 @@ export const App = () => {
             <div className="app__screen" hidden={section !== 'images'}>
               <TopImagesScreen
                 period={prefs.period}
-                autoplayMs={
-                  prefs.autoplay ? prefs.autoplaySeconds * 1000 : null
-                }
+                slideshowMs={prefs.slideshowSeconds * 1000}
                 paused={settingsOpen || section !== 'images'}
               />
             </div>

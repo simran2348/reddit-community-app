@@ -8,6 +8,7 @@ import {
 } from '../components/States';
 import { TopImagesCarousel } from '../components/TopImagesCarousel';
 import { useMinimumDuration } from '../hooks/useMinimumDuration';
+import { preloadImages } from '../preloadImages';
 import { clearRankingsCache, fetchRankings } from '../services/rankingService';
 
 type Result =
@@ -16,15 +17,15 @@ type Result =
 
 type TopImagesScreenProps = {
   period: RankingPeriod;
-  /** Auto-play interval in ms, or null when auto-play is off. */
-  autoplayMs: number | null;
+  /** Time per image in the full-screen slideshow. */
+  slideshowMs: number;
   /** Pause auto-play (settings open or this tab hidden). */
   paused: boolean;
 };
 
 export const TopImagesScreen = ({
   period,
-  autoplayMs,
+  slideshowMs,
   paused,
 }: TopImagesScreenProps) => {
   const [results, setResults] = useState<
@@ -35,7 +36,13 @@ export const TopImagesScreen = ({
   useEffect(() => {
     let cancelled = false;
     fetchRankings(period)
-      .then((data) => {
+      .then(async (data) => {
+        // Keep the camera loader up until every top image is ready.
+        await preloadImages(
+          data.images.flatMap((image) =>
+            image.imageUrl ? [image.imageUrl] : []
+          )
+        );
         if (!cancelled) {
           setResults((prev) => ({
             ...prev,
@@ -71,7 +78,8 @@ export const TopImagesScreen = ({
   }, [period]);
 
   const result = results[period];
-  // The loader stays for at least 5s, longer if the request is slower.
+  // The loader stays for at least 5s, longer until the data and all its
+  // images have loaded.
   const showLoader = useMinimumDuration(!result, MIN_LOADING_MS);
   const shown = showLoader ? undefined : result;
 
@@ -93,7 +101,7 @@ export const TopImagesScreen = ({
           <TopImagesCarousel
             key={period}
             images={shown.data.images}
-            autoplayMs={autoplayMs}
+            slideshowMs={slideshowMs}
             paused={paused}
           />
         )}

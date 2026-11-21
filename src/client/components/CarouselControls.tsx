@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type CarouselControlsProps = {
   canPrev: boolean;
@@ -7,22 +8,6 @@ type CarouselControlsProps = {
   onNext: () => void;
   label: string;
 };
-
-const Chevron = ({ direction }: { direction: 'left' | 'right' }) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d={direction === 'left' ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'} />
-  </svg>
-);
 
 /** Arrow buttons overlaid on the left/right edges of the image stage. */
 export const CarouselControls = memo(
@@ -35,7 +20,7 @@ export const CarouselControls = memo(
         disabled={!canPrev}
         aria-label={`Previous ${label}`}
       >
-        <Chevron direction="left" />
+        <ChevronLeft size={22} strokeWidth={2.5} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -44,7 +29,7 @@ export const CarouselControls = memo(
         disabled={!canNext}
         aria-label={`Next ${label}`}
       >
-        <Chevron direction="right" />
+        <ChevronRight size={22} strokeWidth={2.5} aria-hidden="true" />
       </button>
     </>
   )

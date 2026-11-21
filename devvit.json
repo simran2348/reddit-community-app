@@ -22,6 +22,12 @@
         "helpText": "Shows the Photo Competition tab so members can vote on photos.",
         "defaultValue": false
       },
+      "rankingsIncludeText": {
+        "type": "boolean",
+        "label": "Include text posts in Top posts",
+        "helpText": "Top posts also ranks text posts (shown as text cards). The photo competition stays image-only.",
+        "defaultValue": false
+      },
       "competitionFlair": {
         "type": "string",
         "label": "Photo competition post flair",
@@ -29,6 +35,12 @@
         "placeholder": "Photo Contest",
         "defaultValue": "Photo Contest"
       }
+    }
+  },
+  "permissions": {
+    "reddit": {
+      "enable": true,
+      "asUser": ["SUBSCRIBE_TO_SUBREDDIT"]
     }
   },
   "menu": {

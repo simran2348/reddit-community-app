@@ -7,25 +7,30 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
 - **Top posts:** the 10 most upvoted image posts of the week, month or year, ranked by Reddit upvotes and cached for 10 minutes.
 - **Coverflow carousel:**
   - The active image sits in the center, with dimmed neighbours on each side.
-  - With 4 or more images it loops: image 10 sits to the left of image 1, and both directions wrap around. With 1–3 images it stops at the ends: the left arrow is disabled on the first image and the right arrow on the last (auto-play rewinds to the first).
+  - With 4 or more images it loops: image 10 sits to the left of image 1, and both directions wrap around. With 1–3 images it stops at the ends: the left arrow is disabled on the first image and the right arrow on the last
   - Navigate with the arrows, a swipe, a tap on a side image, or the keyboard arrow keys.
-  - Ranks 1–3 show a medal (`public/p1.png`–`p3.png`) on the image's top-left corner, sized to the card.
   - Each image has its own `3 / 10` tag in its top-right corner that moves with it and fades in when it reaches the front.
 - **Post details on the image:** the avatar, title, upvotes and comments sit on a smooth dark fade at the bottom of the front photo.
-- **Auto-play:** optional, every 3 or 5 seconds. It pauses on hover, while settings are open, or when the app is in the background.
-- **Loading, empty and error states** share one blurred panel. While loading it shows an orange line-art camera (SVG + CSS: the outline draws itself in, the lens rings spin, and the open rings close into full circles at the end of each cycle) on the dark card. The loader stays at least 5 seconds, longer if the data is slower (`useMinimumDuration`). Then the images replace it, or a small dark card appears in the middle with the icon and title (error states add a message and "Try again").
-- **Bottom navigation bar** (edge to edge, solid background):
+- **Text posts (optional):** when mods turn on *Include text posts in Top posts*, text posts are ranked too and shown as dark cards with the start of their text (or the title if there's no body). The slideshow skips them, and the competition stays image-only.
+- **Slideshow:** the round orange play button at the top right of the Top posts carousel opens a black overlay over the whole post. It starts from the current image, cross-fades through the images (fitted, never cropped) with the author's avatar at the bottom left at the slideshow interval set in Settings (3 or 5 s), and loops. Swipe, the arrows or the arrow keys move, Space pauses, Esc or ✕ closes. It requests real fullscreen only where the browser allows it; inside Reddit it covers the post. Code: `components/Slideshow.tsx`.
+- **Loading, empty and error states** share one blurred panel. While loading it shows an orange line-art camera (SVG + CSS: the outline draws itself in, the lens rings spin, and the open rings close into full circles at the end of each cycle) on the dark card (same size as the empty-state card). The loader stays at least 5 seconds, longer if the data is slower (`useMinimumDuration`). It also stays up until the images have downloaded, so cards never show their own loading placeholders (`preloadImages.ts`): all 10 on Top posts; on the competition, all entries up to 20, otherwise the cards shown first (later ones load a couple ahead as you swipe). A 30-second safety cap stops a stuck image from keeping the loader up forever. Then the images replace it, or a small dark card appears in the middle with the icon and title (error states add a message and "Try again").
+- **Dark only:** the whole app uses one dark theme (`src/client/styles/global.css`), whatever the Reddit or device theme.
+- **Bottom navigation bar** (edge to edge, near-black):
   - 🏆 *Podium + current period* ("This week"): the top posts carousel.
   - *Trophy*: the photo competition. While a competition is running, an orange pulse ripples behind the icon whenever you're on another screen. When it's turned off, the screen shows "No competition right now".
   - *Cog*: settings.
 - **Settings screen:**
-  - Holds the week/month/year toggle and the auto-play options.
-  - Slides in from the right above the nav bar while the main screen slides out, over the same background.
+  - Opens in place like the other tabs (no slide), edge to edge above the nav, with a dark see-through backdrop over the background photo.
+  - **Community header:** the source subreddit's banner (edge to edge), icon, name and member count, with a **Join** button. Join subscribes the viewer to the subreddit the app is installed in (`subscribeToCurrentSubreddit`, needs `SUBSCRIBE_TO_SUBREDDIT` in `devvit.json` permissions). Reddit doesn't tell apps whether a user is already a member, so "Joined" reflects joins made through this button (stored in Redis). Icon and banner are requested at full size (Reddit's resize query is dropped on `styles.redditmedia.com`) so they stay sharp. Info is cached for 30 minutes and only fetched when Settings is first opened.
+  - **Inline options:** *Top posts* (Week / Month / Year) and *Slideshow* (3s / 5s), each on one row.
+  - **Send feedback to the mods** (bottom): opens a modmail compose to the community.
   - Choices are saved per viewer in browser storage.
+- **Bottom nav shadow:** a soft shadow above the nav separates it from the screen content.
 - **Photo competition:**
   - Moderators can turn it on in the app settings.
   - Image posts with a set flair become entries; leave the flair empty to include all image posts.
   - One vote per user per photo, and you can't vote for your own. These rules are enforced on the server.
+  - Entries are ordered by competition votes (most first; ties newest first). The top 3 by votes get a medal (`public/p1.png`–`p3.png`) on the photo's top-left corner; entries with equal votes share a place, and entries with no votes get none. Medals update right after a vote; the order refreshes on the next load.
 - **Avatars:** 40px circles showing the author's snoovatar, or a slightly zoomed `public/snoo.png` when they don't have one.
 - **Post title:** the app creates its post on install, or from the moderator menu, titled `Welcome to r/<subreddit>`.
 
@@ -34,20 +39,26 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
 | Where | Setting | Purpose |
 |---|---|---|
 | `src/server/core/source.ts` | `getSourceSubreddit()` | Subreddit the posts come from: the one the app is installed in (needed for triggers) |
+| Dev portal → app settings | Include text posts in Top posts | Also ranks text posts in Top posts (not the competition). Off by default |
 | Dev portal → app settings | Enable photo competition | Turns the competition on, and shows the orange pulse on the trophy |
 | Dev portal → app settings | Photo competition post flair | Flair that marks entries (empty = all image posts). Matching ignores emoji, punctuation, case and decorative fonts, so `Photography Contest` matches `📸 \| 𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝘆 𝗖𝗼𝗻𝘁𝗲𝘀𝘁` |
 | `devvit.json` → `dev.subreddit` | — | Subreddit used by `npm run dev` |
+
+## Icons
+
+All UI icons come from [lucide-react](https://lucide.dev) (tree-shaken, so only the icons imported are bundled): Podium, Trophy and Settings in the nav, chevrons, Play (slideshow button), Play/Pause/X in the slideshow, ArrowBigUp and MessageSquare on posts, Users, Plus/Check, MessageSquareText in the Settings community card, and Quote on text-post cards. The camera loader is a custom SVG, and the medals are PNGs in `public/`.
 
 ## Project structure
 
 ```
 src/
   server/                 Devvit backend (Hono)
-    routes/api.ts         /api/config, /api/rankings, /api/competition(/votes|/vote)
+    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/competition(/votes|/vote)
     routes/menu.ts        Moderator menu: create the post
     routes/triggers.ts    On install: create the post; post submit/flair/delete: update the competition index
     routes/scheduler.ts   Every 15 min: competition catch-up scan for missed triggers
-    core/rankings.ts      Top image posts + author avatars (Redis-cached)
+    core/rankings.ts      Top image (and optionally text) posts + author avatars (Redis-cached)
+    core/community.ts     Community banner/icon/members (cached) and Join
     core/competition.ts   Entries, vote counts, server-side vote validation
     core/settings.ts      Reads subreddit settings
     core/source.ts        Source subreddit (the install subreddit)
@@ -78,7 +89,7 @@ public/                   background.jpg, snoo.png, p1–p3.png (medals)
   - The list is cached for 5 minutes and cleared by any trigger. Vote counts are always live.
   - `[competition]` lines in `npx devvit logs` show the backfill, each indexed post, catch-up results, and fetch counts.
 - **Votes** are stored in Redis, keyed by Reddit post ID. Duplicate votes are blocked with an atomic `HSETNX` per user and post.
-- **Viewer preferences** (period, auto-play) live in `localStorage` and fail safely if storage is unavailable.
+- **Viewer preferences** (period, slideshow interval) live in `localStorage` and fail safely if storage is unavailable.
 
 ## Commands
 

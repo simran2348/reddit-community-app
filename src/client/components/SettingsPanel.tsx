@@ -1,6 +1,7 @@
-import { memo, useEffect, useId, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { RankingPeriod } from '../../shared/api';
-import { AUTOPLAY_OPTIONS } from '../preferences';
+import { SLIDESHOW_OPTIONS } from '../preferences';
+import { CommunityCard } from './CommunityCard';
 import type { Preferences } from '../preferences';
 
 type SettingsPanelProps = {
@@ -11,19 +12,22 @@ type SettingsPanelProps = {
 };
 
 const PERIODS: readonly { value: RankingPeriod; label: string }[] = [
-  { value: 'week', label: 'This week' },
-  { value: 'month', label: 'This month' },
-  { value: 'year', label: 'This year' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+  { value: 'year', label: 'Year' },
 ];
 
 /**
- * Full-height settings screen that slides in over the dashboard (inside the
- * splash box; it never navigates or opens expanded mode).
+ * Settings screen: opens in place like the other tabs, over a dark
+ * see-through backdrop (inside the splash box; it never navigates or opens
+ * expanded mode).
  */
 export const SettingsPanel = memo(
   ({ open, onClose, prefs, onChange }: SettingsPanelProps) => {
     const panelRef = useRef<HTMLDivElement>(null);
-    const autoplayId = useId();
+    // Community info is only fetched once the screen is first opened.
+    const [visited, setVisited] = useState(open);
+    if (open && !visited) setVisited(true);
 
     useEffect(() => {
       if (!open) return;
@@ -46,82 +50,67 @@ export const SettingsPanel = memo(
         inert={!open}
       >
         <div className="settings__body">
-          <section className="settings__section">
-            <h3 className="settings__heading" id="period-heading">
-              Top posts
-            </h3>
-            <div
-              className="toggle-group"
-              role="radiogroup"
-              aria-labelledby="period-heading"
-            >
-              {PERIODS.map((option) => {
-                const selected = prefs.period === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    className={`toggle-group__option${selected ? ' is-selected' : ''}`}
-                    onClick={() => onChange({ period: option.value })}
+          {visited && (
+            <CommunityCard>
+              <div className="settings__options">
+                <div className="settings__row">
+                  <p className="settings__label" id="period-heading">
+                    Top posts
+                  </p>
+                  <div
+                    className="toggle-group toggle-group--small"
+                    role="radiogroup"
+                    aria-labelledby="period-heading"
                   >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="settings__section">
-            <h3 className="settings__heading">Carousel</h3>
-            <label className="checkbox" htmlFor={autoplayId}>
-              <input
-                id={autoplayId}
-                type="checkbox"
-                className="checkbox__input"
-                checked={prefs.autoplay}
-                onChange={(event) =>
-                  onChange({ autoplay: event.target.checked })
-                }
-              />
-              <span className="checkbox__box" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M5 12.5l4.5 4.5L19 7.5"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <span className="checkbox__label">Auto-play images</span>
-            </label>
-            <div
-              className={`toggle-group toggle-group--small${prefs.autoplay ? '' : ' is-disabled'}`}
-              role="radiogroup"
-              aria-label="Auto-play interval"
-              aria-disabled={!prefs.autoplay}
-            >
-              {AUTOPLAY_OPTIONS.map((seconds) => {
-                const selected = prefs.autoplaySeconds === seconds;
-                return (
-                  <button
-                    key={seconds}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={!prefs.autoplay}
-                    className={`toggle-group__option${selected ? ' is-selected' : ''}`}
-                    onClick={() => onChange({ autoplaySeconds: seconds })}
+                    {PERIODS.map((option) => {
+                      const selected = prefs.period === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={`toggle-group__option${selected ? ' is-selected' : ''}`}
+                          onClick={() => onChange({ period: option.value })}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="settings__row">
+                  <p className="settings__label" id="slideshow-heading">
+                    Slideshow Interval
+                  </p>
+                  <div
+                    className="toggle-group toggle-group--small"
+                    role="radiogroup"
+                    aria-labelledby="slideshow-heading"
                   >
-                    Every {seconds} sec
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+                    {SLIDESHOW_OPTIONS.map((seconds) => {
+                      const selected = prefs.slideshowSeconds === seconds;
+                      return (
+                        <button
+                          key={seconds}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          aria-label={`Every ${seconds} seconds`}
+                          className={`toggle-group__option${selected ? ' is-selected' : ''}`}
+                          onClick={() =>
+                            onChange({ slideshowSeconds: seconds })
+                          }
+                        >
+                          {seconds}s
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CommunityCard>
+          )}
         </div>
       </div>
     );
