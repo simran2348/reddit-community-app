@@ -6,7 +6,6 @@ import { context } from '@devvit/web/server';
  * this subreddit, so the competition index depends on it being the source.
  */
 export const getSourceSubreddit = (): string => context.subredditName;
-// export const getSourceSubreddit = (): string => 'IndianFashion';
 
 export const isFromSourceSubreddit = (subredditName: string): boolean =>
   subredditName.toLowerCase() === getSourceSubreddit().toLowerCase();

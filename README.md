@@ -28,14 +28,15 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
 - **Bottom nav shadow:** a soft shadow above the nav separates it from the screen content.
 - **Winners (👑 tab):**
   - **Competition winner:** when the competition's end date (app setting, end of that day UTC) has passed, the hourly check picks the top entry by Reddit upvotes, gives it the winner flair (default `🏆 {theme} {year}`) and saves the **top 10** as a record. The competition then counts as ended and its tab is hidden (the app can't switch off the setting itself, so the toggle in the portal stays on). To run a new one, set a new theme and end date.
-  - **Top post of the month:** after each month ends, the hourly check gives last calendar month's top image post the monthly flair (default `⬆️ {month} {year}`) and saves it.
+  - **Top post of the month:** after each month ends, the hourly check gives last calendar month's top image post the monthly flair (default `⬆️ {month} {year}`) and saves it. Monthly winners are kept for a year (the month just finished plus the 12 before it, e.g. Oct 2026 → Oct 2027); older months are deleted by the hourly check. Competition winners are kept forever.
   - Records are the app's own snapshots in Redis (`winners:records`), so they don't depend on what flair a subreddit uses. Each award happens once, so re-running is safe. If flair can't be set (e.g. a subreddit that only allows preset flairs, without the template ID setting), the record is still saved and the error is logged.
   - The tab has a top panel with a **Monthly / Theme** switch and a dropdown (the phone's native picker) of that type's awards, newest first: months for Monthly, competition themes for Theme. It opens on whichever type has the newest award and remembers the choice in each. It shows the chosen award's posts in the carousel with medals and upvotes as they were when awarded.
   - **Deleted or removed winners are hidden:** when the tab loads, each saved post is re-checked (cached for 30 minutes per post). Deleted, mod-removed or NSFW posts are hidden. Awards are final, so nobody moves up: the other entries keep their places and medals, and an award with no posts left disappears from the dropdown. A failed check counts as visible, so a Reddit hiccup never hides a winner.
   - Moderators can run the checks immediately from the subreddit menu: **Run winner checks now**.
+  - **End competition now** (moderator menu) ends the running competition early, with or without an end date. It asks for confirmation, then awards the winner straight away. The early end is stored in Redis (apps can't change settings), takes priority over a later end date, and hides the competition tab. To run another, set a new end date, or a new theme if there's no end date.
 - **Photo competition:**
   - Moderators can turn it on in the app settings.
-  - Image posts with a set flair become entries; leave the flair empty to include all image posts.
+  - Image posts with a set flair become entries; leave the flair empty to include all image posts. Use a new flair for each competition: entries aren't limited by date, so with the same flair, posts from earlier competitions are entered again (and an old winner could win again).
   - **Theme info:** when mods set a theme, description or post link, a round orange ⓘ button sits in the competition screen's top-right corner (hidden while the modal is open). It opens a modal that grows from the centre (and shrinks back when closed) over a dark backdrop (the bottom nav stays visible): an orange THEME label centred above the theme name, the short description in orange quotes, then "For more info, visit the competition post" and an orange **Competition post** button (when the link is set). A tap outside the box or Esc closes it, and switching tabs closes it straight away (`components/ThemeInfo.tsx`).
   - **Cards look like Top posts:** the photo fills the card with the avatar, title and author on a bottom fade, plus the medal and, on the right, an orange tag with the post's Reddit upvotes. Avatars are looked up once per author and cached for a day (`server/core/avatars.ts`, shared with Top posts).
   - **Slideshow:** the same orange play button and full-post slideshow as Top posts, using the Settings interval. It sits under the theme ⓘ button when there is one.
@@ -71,7 +72,8 @@ All UI icons come from [lucide-react](https://lucide.dev) (tree-shaken, so only 
 src/
   server/                 Devvit backend (Hono)
     routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/preferences, /api/winners, /api/competition(/votes|/vote)
-    routes/menu.ts        Moderator menu: create the post, run winner checks now
+    routes/menu.ts        Moderator menu: create the post, run winner checks now, end competition now
+    routes/forms.ts       Confirmation form for ending the competition early
     routes/triggers.ts    On install: create the post; post submit/flair/delete: update the competition index
     routes/scheduler.ts   Every 15 min: competition catch-up scan; hourly: winner checks
     core/winners.ts       Competition and monthly awards (flair + saved records)
@@ -128,4 +130,4 @@ Requires Node 24+. CI (`.github/workflows/ci.yaml`) runs type check, lint, unit 
 
 ## Known leftovers
 
-These files are unused and safe to remove: `index.css`, `components/InfoPopover.tsx`, `components/AppHeader.tsx`, `components/TimeFilter.tsx`, `components/MainNavigation.tsx`, `components/SettingsButton.tsx`, `components/VoteButton.tsx`, `services/votingService.ts` (old in-app voting), and `server/routes/forms.ts`. If you remove `forms.ts`, also remove its import and route in `server/index.ts`.
+These files are unused and safe to remove: `index.css`, `components/InfoPopover.tsx`, `components/AppHeader.tsx`, `components/TimeFilter.tsx`, `components/MainNavigation.tsx`, `components/SettingsButton.tsx`, `components/VoteButton.tsx`, and `services/votingService.ts` (old in-app voting).

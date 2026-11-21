@@ -2,7 +2,7 @@ import { reddit, redis } from '@devvit/web/server';
 import { isT3 } from '@devvit/web/shared';
 import type { WinnerEntry, WinnerRecord } from '../../shared/api';
 import { getAvatarUrl } from './avatars';
-import { cached, keySlug } from './cache';
+import { cached } from './cache';
 import { getFinalStandings } from './competition';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
 import { getCommunitySettings } from './settings';
@@ -22,6 +22,13 @@ const RECORDS_KEY = 'winners:records';
 const COMPETITION_TOP_COUNT = 10;
 /** Reddit's "month" is the last 30 days, so scan the year and filter dates. */
 const MONTHLY_SCAN_LIMIT = 1000;
+/**
+ * Monthly winners are kept for a year: the month just finished plus the 12
+ * before it (e.g. October 2026 stays until October 2027 is awarded alongside
+ * it, and is removed when November 2027 is awarded). Competitions are kept.
+ */
+const MONTHLY_KEEP_MONTHS = 12;
+const MONTHLY_ID = /^monthly:(\d{4})-(\d{2})$/;
 const MONTH_NAMES = [
   'January',
   'February',
@@ -50,6 +57,32 @@ const isWinnerRecord = (value: unknown): value is WinnerRecord =>
   'label' in value &&
   'entries' in value &&
   Array.isArray(value.entries);
+
+/** Months since year 0, so month ranges are simple subtraction. */
+const monthNumber = (year: number, monthIndex: number): number =>
+  year * 12 + monthIndex;
+
+/**
+ * True for a monthly record older than a year (see MONTHLY_KEEP_MONTHS).
+ * Competition records, and IDs that don't parse, are never expired.
+ */
+const isExpiredMonthly = (id: string, now: Date): boolean => {
+  const match = id.match(MONTHLY_ID);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const lastFinished = monthNumber(now.getUTCFullYear(), now.getUTCMonth()) - 1;
+  return monthNumber(year, month - 1) < lastFinished - MONTHLY_KEEP_MONTHS;
+};
+
+/** Deletes monthly records older than a year; returns how many. */
+const pruneOldMonthly = async (): Promise<number> => {
+  const now = new Date();
+  const ids = await redis.hKeys(RECORDS_KEY);
+  const expired = ids.filter((id) => isExpiredMonthly(id, now));
+  if (expired.length > 0) await redis.hDel(RECORDS_KEY, expired);
+  return expired.length;
+};
 
 /** How long a "still visible?" check of a winner post is reused. */
 const VISIBILITY_CACHE_TTL_SECONDS = 30 * 60;
@@ -99,8 +132,12 @@ const visiblePostIds = async (ids: readonly string[]): Promise<Set<string>> => {
  */
 export const listWinners = async (): Promise<WinnerRecord[]> => {
   const raw = await redis.hGetAll(RECORDS_KEY);
+  const now = new Date();
   const records: WinnerRecord[] = [];
-  for (const json of Object.values(raw)) {
+  for (const [id, json] of Object.entries(raw)) {
+    // Also hidden here, so an old month disappears even before the hourly
+    // job deletes it.
+    if (isExpiredMonthly(id, now)) continue;
     try {
       const parsed: unknown = JSON.parse(json);
       if (isWinnerRecord(parsed)) records.push(parsed);
@@ -147,18 +184,18 @@ const applyFlair = async (
   }
 };
 
-/** Awards the competition once its end date has passed. */
+/** Awards the competition once it has ended (end date or ended early). */
 export const checkCompetitionWinner = async (): Promise<string> => {
   const settings = await getCommunitySettings();
   const { competitionEndsAt: endsAt, competitionEndDate: endDate } = settings;
-  if (!settings.competitionSwitchedOn || !endsAt || !endDate) {
-    return 'competition: no end date set';
-  }
+  if (!settings.competitionSwitchedOn) return 'competition: switched off';
+  if (!endsAt) return 'competition: no end date set';
   if (Date.now() < endsAt.getTime())
-    return `competition: runs until ${endDate}`;
+    return `competition: runs until ${endDate ?? endsAt.toISOString()}`;
 
   const flair = settings.competitionFlair;
-  const id = `competition:${keySlug(flair ?? 'all')}:${endDate}`;
+  // Same as `competition:{flair}:{endDate}` for competitions with an end date.
+  const id = `competition:${settings.competitionKey}`;
   if (await hasRecord(id)) return 'competition: already awarded';
 
   const standings = await getFinalStandings(flair, COMPETITION_TOP_COUNT);
@@ -276,6 +313,13 @@ export const runWinnerChecks = async (): Promise<string[]> => {
       console.error('[winners] check failed', error);
       results.push(`${check.name}: failed (see logs)`);
     }
+  }
+  try {
+    const removed = await pruneOldMonthly();
+    if (removed > 0)
+      results.push(`removed ${removed} monthly older than a year`);
+  } catch (error) {
+    console.error('[winners] cleanup failed', error);
   }
   console.log(`[winners] ${results.join(' | ')}`);
   return results;

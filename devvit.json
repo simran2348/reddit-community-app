@@ -49,7 +49,7 @@
       "competitionEndDate": {
         "type": "string",
         "label": "Photo competition end date (YYYY-MM-DD)",
-        "helpText": "The competition ends automatically at the end of this day (UTC). The top post by upvotes wins and gets the winner flair, and the top 10 are saved to Winners. To run a new competition, set a new theme and end date. Leave empty for no end.",
+        "helpText": "The competition ends automatically at the end of this day (UTC). The top post by upvotes wins and gets the winner flair, and the top 10 are saved to Winners. To run a new competition, set a new theme and end date. Leave empty for no end. To end early, use the subreddit menu: End competition now.",
         "placeholder": "2026-06-30"
       },
       "competitionWinnerFlair": {
@@ -72,7 +72,7 @@
       "competitionFlair": {
         "type": "string",
         "label": "Photo competition post flair",
-        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition.",
+        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition. Use a new flair for each competition: with the same flair, posts from earlier competitions are entered again.",
         "placeholder": "Photo Contest",
         "defaultValue": "Photo Contest"
       }
@@ -99,8 +99,18 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/winner-checks"
+      },
+      {
+        "label": "End competition now",
+        "description": "End the running photo competition early and award the winner",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/end-competition"
       }
     ]
+  },
+  "forms": {
+    "endCompetition": "/internal/form/end-competition"
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install",
