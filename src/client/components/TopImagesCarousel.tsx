@@ -1,8 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react';
-import { Play } from 'lucide-react';
 import type { ImageRanking } from '../../shared/api';
 import { Carousel } from './Carousel';
-import { Slideshow } from './Slideshow';
+import { Slideshow, SlideshowButton } from './Slideshow';
 import { TopImageCard } from './TopImageCard';
 
 type TopImagesCarouselProps = {
@@ -28,11 +27,7 @@ export const TopImagesCarousel = memo(
 
     const renderActions = useCallback(
       (index: number) => (
-        <button
-          type="button"
-          className="carousel-action"
-          aria-label="Play slideshow"
-          title="Play slideshow"
+        <SlideshowButton
           onClick={() => {
             // Start from the front card, or the next image after a text post.
             const front = images[index];
@@ -45,14 +40,7 @@ export const TopImagesCarousel = memo(
             );
             setSlideshowStart(Math.max(0, start));
           }}
-        >
-          <Play
-            className="carousel-action__icon"
-            size={16}
-            fill="currentColor"
-            aria-hidden="true"
-          />
-        </button>
+        />
       ),
       [images, photos]
     );

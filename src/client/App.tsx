@@ -74,12 +74,10 @@ export const App = () => {
                 {competitionEnabled ? (
                   <CompetitionScreen
                     isActive={section === 'competition' && !settingsOpen}
+                    slideshowMs={prefs.slideshowSeconds * 1000}
                   />
                 ) : (
-                  <EmptyState
-                    icon="🏆"
-                    title="No competition right now"
-                  />
+                  <EmptyState icon="🏆" title="No competition right now" />
                 )}
               </div>
             )}

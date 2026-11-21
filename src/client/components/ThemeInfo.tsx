@@ -44,22 +44,21 @@ export const ThemeInfo = memo(({ theme, active }: ThemeInfoProps) => {
 
   return (
     <>
-      {phase === 'closed' && (
-        <button
-          type="button"
-          className="theme-info__button"
-          aria-label="Competition theme"
-          aria-haspopup="dialog"
-          onClick={() => setPhase('open')}
-        >
-          <Info
-            className="theme-info__glyph"
-            size={20}
-            strokeWidth={2.25}
-            aria-hidden="true"
-          />
-        </button>
-      )}
+      <button
+        type="button"
+        className={`theme-info__button${phase === 'closed' ? '' : ' is-hidden'}`}
+        tabIndex={phase === 'closed' ? undefined : -1}
+        aria-label="Competition theme"
+        aria-haspopup="dialog"
+        onClick={() => setPhase('open')}
+      >
+        <Info
+          className="theme-info__glyph"
+          size={20}
+          strokeWidth={2.25}
+          aria-hidden="true"
+        />
+      </button>
 
       {phase !== 'closed' && (
         <div

@@ -72,6 +72,11 @@ export type CompetitionEntry = {
   id: string;
   title: string;
   author: string;
+  /** Author's snoovatar, or null when they don't have one. */
+  authorAvatarUrl: string | null;
+  /** Reddit upvote score and comment count (shown like Top posts). */
+  score: number;
+  commentCount: number;
   imageUrl: string;
   imageWidth: number | null;
   imageHeight: number | null;

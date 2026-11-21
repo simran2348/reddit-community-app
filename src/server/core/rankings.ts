@@ -5,6 +5,7 @@ import type {
   RankingPeriod,
   RankingsResponse,
 } from '../../shared/api';
+import { getAvatarUrl } from './avatars';
 import { cached } from './cache';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
 import { getCommunitySettings } from './settings';
@@ -48,17 +49,6 @@ const toRanking = (
   period,
   postUrl: toPostUrl(post),
 });
-
-/** Author snoovatar; null for deleted users, no avatar, or lookup errors. */
-const getAvatarUrl = async (username: string): Promise<string | null> => {
-  if (!username || username === '[deleted]') return null;
-  try {
-    const url = await reddit.getSnoovatarUrl(username);
-    return url && url.startsWith('https://') ? url : null;
-  } catch {
-    return null;
-  }
-};
 
 /**
  * Top posts in the subreddit for the period, ranked by upvotes: image posts,

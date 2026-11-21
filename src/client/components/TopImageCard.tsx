@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ArrowBigUp, MessageSquare, Quote } from 'lucide-react';
 import { navigateTo } from '@devvit/web/client';
 import type { ImageRanking } from '../../shared/api';
@@ -33,38 +34,67 @@ export const Avatar = ({ url }: { url: string | null }) => {
   );
 };
 
-/** Avatar, title, author, upvotes and comments; shared by both layouts. */
-const PostDetails = ({ image }: { image: ImageRanking }) => (
+type PostDetailsProps = {
+  title: string;
+  author: string;
+  avatarUrl: string | null;
+  postUrl: string;
+  /** Upvotes and comments; omitted on competition cards. */
+  score?: number;
+  commentCount?: number;
+  /** Optional control on the right (e.g. the competition Vote button). */
+  action?: ReactNode;
+};
+
+/**
+ * Avatar, title, author, upvotes and comments, overlaid on the photo's
+ * bottom fade. Shared by Top posts and the competition.
+ */
+export const PostDetails = ({
+  title,
+  author,
+  avatarUrl,
+  postUrl,
+  score,
+  commentCount,
+  action,
+}: PostDetailsProps) => (
   <div className="post-details">
-    <Avatar url={image.authorAvatarUrl} />
+    <Avatar url={avatarUrl} />
     <div className="post-details__text">
       <button
         type="button"
         className="post-details__title link-button"
-        onClick={() => navigateTo(image.postUrl)}
-        title={image.title}
+        onClick={() => navigateTo(postUrl)}
+        title={title}
       >
-        {image.title}
+        {title}
       </button>
       <p className="post-details__meta">
-        <span className="post-details__author">u/{image.author}</span>
-        <span className="post-details__stat" title={`${image.score} upvotes`}>
-          <ArrowBigUp size={14} aria-hidden="true" />
-          {formatCount(image.score)}
-        </span>
-        <span
-          className="post-details__stat"
-          title={`${image.commentCount} comments`}
-        >
-          <MessageSquare size={12} strokeWidth={2.5} aria-hidden="true" />
-          {formatCount(image.commentCount)}
-        </span>
+        <span className="post-details__author">u/{author}</span>
+        {score !== undefined && (
+          <span className="post-details__stat" title={`${score} upvotes`}>
+            <ArrowBigUp size={14} aria-hidden="true" />
+            {formatCount(score)}
+          </span>
+        )}
+        {commentCount !== undefined && (
+          <span
+            className="post-details__stat"
+            title={`${commentCount} comments`}
+          >
+            <MessageSquare size={12} strokeWidth={2.5} aria-hidden="true" />
+            {formatCount(commentCount)}
+          </span>
+        )}
       </p>
     </div>
+    {action && <div className="post-details__action">{action}</div>}
   </div>
 );
 
-const Photo = ({ image, src }: { image: ImageRanking; src: string }) => {
+/** Cover-fitted photo that fades in once loaded. */
+export const Photo = ({ src, alt }: { src: string; alt: string }) => {
   const [status, setStatus] = useState<ImageStatus>('loading');
   return (
     <div className={`cover-card is-${status}`}>
@@ -74,7 +104,7 @@ const Photo = ({ image, src }: { image: ImageRanking; src: string }) => {
         <img
           className="cover-card__image"
           src={src}
-          alt={`#${image.rank}: ${image.title} by u/${image.author}`}
+          alt={alt}
           loading="eager"
           decoding="async"
           draggable={false}
@@ -104,12 +134,22 @@ const TextBody = ({ image }: { image: ImageRanking }) => (
 export const TopImageCard = memo(({ image }: TopImageCardProps) => (
   <div className="overlay-card">
     {image.imageUrl ? (
-      <Photo image={image} src={image.imageUrl} />
+      <Photo
+        src={image.imageUrl}
+        alt={`#${image.rank}: ${image.title} by u/${image.author}`}
+      />
     ) : (
       <TextBody image={image} />
     )}
     <div className="overlay-card__details">
-      <PostDetails image={image} />
+      <PostDetails
+        title={image.title}
+        author={image.author}
+        avatarUrl={image.authorAvatarUrl}
+        postUrl={image.postUrl}
+        score={image.score}
+        commentCount={image.commentCount}
+      />
     </div>
   </div>
 ));

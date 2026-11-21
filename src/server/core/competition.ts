@@ -9,6 +9,7 @@ import type {
   VoteResponse,
   ViewerVoteState,
 } from '../../shared/api';
+import { getAvatarUrls } from './avatars';
 import { cached, keySlug } from './cache';
 import { getPostImage, hiddenReason, isHiddenPost, toPostUrl } from './media';
 import { flairMatches, getCommunitySettings } from './settings';
@@ -53,7 +54,7 @@ const keys = (flair: Flair) => {
     /** Set once the one-time backfill scan has run for this scope. */
     seeded: `${scope}:seeded`,
     /** Short-lived cache of the built entry list. */
-    entries: `${scope}:entries:v5`,
+    entries: `${scope}:entries:v6`,
     counts: `${scope}:counts`,
     userVotes: (userId: string) => `${scope}:user:${userId}`,
   };
@@ -111,6 +112,10 @@ const toCachedEntry = (post: Post): CachedEntry | null => {
     title: post.title,
     author: post.authorName,
     authorId: post.authorId ?? null,
+    // Filled in after, in one batched (and cached) lookup for all entries.
+    authorAvatarUrl: null,
+    score: post.score,
+    commentCount: post.numberOfComments,
     imageUrl: image.url,
     imageWidth: image.width,
     imageHeight: image.height,
@@ -316,11 +321,17 @@ const loadEntries = async (flair: Flair): Promise<CachedEntry[]> => {
     `[competition] index=${ids.length} fetched=${posts.length} pruned=${missing.length}`
   );
 
-  return posts
+  const entries = posts
     .filter((post) => isEligiblePost(post, flair))
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map(toCachedEntry)
     .filter((entry): entry is CachedEntry => entry !== null);
+
+  const avatars = await getAvatarUrls(entries.map((entry) => entry.author));
+  return entries.map((entry) => ({
+    ...entry,
+    authorAvatarUrl: avatars.get(entry.author) ?? null,
+  }));
 };
 
 const getCachedEntries = (flair: Flair): Promise<CachedEntry[]> =>
@@ -369,13 +380,13 @@ export const getCompetition = async (): Promise<CompetitionResponse> => {
     readViewer(flair, cachedEntries),
   ]);
 
-  // Most votes first; ties keep the cached newest-first order (stable sort).
+  // Most Reddit upvotes first; ties keep the cached newest-first order.
   const entries: CompetitionEntry[] = cachedEntries
     .map(({ authorId: _authorId, ...entry }) => ({
       ...entry,
       voteCount: counts[entry.id] ?? 0,
     }))
-    .sort((a, b) => b.voteCount - a.voteCount);
+    .sort((a, b) => b.score - a.score);
 
   return {
     subreddit: getSourceSubreddit(),

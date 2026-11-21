@@ -1,74 +1,51 @@
-import { memo, useState } from 'react';
-import { navigateTo } from '@devvit/web/client';
+import { memo } from 'react';
+import { ArrowBigUp } from 'lucide-react';
 import type { CompetitionEntry } from '../../shared/api';
-import { plural } from '../format';
-import { VoteButton } from './VoteButton';
-import type { VoteButtonState } from './VoteButton';
+import { formatCount } from '../format';
+import { Photo, PostDetails } from './TopImageCard';
 
 type CompetitionCardProps = {
   entry: CompetitionEntry;
-  voteState: VoteButtonState;
-  /** Medal place (1-3) by votes, or null for no medal. */
+  /** Medal place (1-3) by Reddit upvotes, or null for no medal. */
   medal: number | null;
-  onVote: (postId: string) => void;
 };
 
-type ImageStatus = 'loading' | 'loaded' | 'error';
-
+/**
+ * Same look as a Top posts card: photo with the avatar, title and author on
+ * a bottom fade, plus the top-3 medal and an orange tag with the post's
+ * Reddit upvotes (people vote by upvoting the post on Reddit).
+ */
 export const CompetitionCard = memo(
-  ({ entry, voteState, medal, onVote }: CompetitionCardProps) => {
-    const [imageStatus, setImageStatus] = useState<ImageStatus>('loading');
-
-    return (
-      <article className="card photo-card">
-        <div className={`photo-card__frame is-${imageStatus}`}>
-          {imageStatus === 'error' ? (
-            <span className="photo-card__fallback">Image unavailable</span>
-          ) : (
-            <img
-              className="photo-card__image"
-              src={entry.imageUrl}
-              alt={entry.title}
-              loading="eager"
-              decoding="async"
-              draggable={false}
-              onLoad={() => setImageStatus('loaded')}
-              onError={() => setImageStatus('error')}
-            />
-          )}
-          {medal !== null && (
-            <img
-              className="rank-medal"
-              src={`/p${medal}.png`}
-              alt={`Place ${medal} by votes`}
-              draggable={false}
-            />
-          )}
-        </div>
-
-        <div className="photo-card__meta">
-          <div className="photo-card__titles">
-            <h2 className="photo-card__title">
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => navigateTo(entry.postUrl)}
-                title={entry.title}
-              >
-                {entry.title}
-              </button>
-            </h2>
-            <p className="photo-card__author">
-              u/{entry.author} ·{' '}
-              <span className="photo-card__votes">
-                {plural(entry.voteCount, 'vote', 'votes')}
-              </span>
-            </p>
-          </div>
-          <VoteButton state={voteState} onVote={() => onVote(entry.id)} />
-        </div>
-      </article>
-    );
-  }
+  ({ entry, medal }: CompetitionCardProps) => (
+    <div className="overlay-card">
+      <Photo src={entry.imageUrl} alt={`${entry.title} by u/${entry.author}`} />
+      {medal !== null && (
+        <img
+          className="rank-medal"
+          src={`/p${medal}.png`}
+          alt={`Place ${medal} by upvotes`}
+          draggable={false}
+        />
+      )}
+      <div className="overlay-card__details">
+        <PostDetails
+          title={entry.title}
+          author={entry.author}
+          avatarUrl={entry.authorAvatarUrl}
+          postUrl={entry.postUrl}
+          action={
+            <span
+              className="upvote-tag"
+              title={`${entry.score} upvotes`}
+              aria-label={`${entry.score} upvotes`}
+            >
+              <ArrowBigUp size={14} fill="currentColor" aria-hidden="true" />
+              {formatCount(entry.score)}
+            </span>
+          }
+        />
+      </div>
+    </div>
+  )
 );
 CompetitionCard.displayName = 'CompetitionCard';

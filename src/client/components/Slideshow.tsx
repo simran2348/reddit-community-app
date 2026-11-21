@@ -1,14 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pause, Play, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import type { ImageRanking } from '../../shared/api';
 import { CarouselControls } from './CarouselControls';
 import { Avatar } from './TopImageCard';
 import { useCarousel } from '../hooks/useCarousel';
 import { useDocumentHidden } from '../hooks/useDocumentHidden';
 
+/** What the slideshow needs from a post (Top posts images or entries). */
+export type SlideshowItem = {
+  id: string;
+  imageUrl: string | null;
+  title: string;
+  author: string;
+  authorAvatarUrl: string | null;
+};
+
+/** Round orange play button that opens the slideshow (top-right gutter). */
+export const SlideshowButton = ({ onClick }: { onClick: () => void }) => (
+  <button
+    type="button"
+    className="carousel-action"
+    aria-label="Play slideshow"
+    title="Play slideshow"
+    onClick={onClick}
+  >
+    <Play
+      className="carousel-action__icon"
+      size={16}
+      fill="currentColor"
+      aria-hidden="true"
+    />
+  </button>
+);
+
 type SlideshowProps = {
-  images: readonly ImageRanking[];
+  images: readonly SlideshowItem[];
   startIndex: number;
   intervalMs: number;
   onClose: () => void;

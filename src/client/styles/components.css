@@ -572,6 +572,17 @@
     transform 0.15s var(--ease);
 }
 
+/* Hidden (but keeping its place) while the modal is open. */
+.theme-info__button.is-hidden {
+  visibility: hidden;
+}
+
+/* With the theme ⓘ in the top-right corner, the slideshow button sits
+   just below it. */
+.screen--competition:has(.theme-info__button) .carousel__actions {
+  top: 40px;
+}
+
 /* Exact centring of the ⓘ glyph inside the circle. */
 .theme-info__glyph {
   display: block;
@@ -1172,69 +1183,6 @@
   color: var(--bronze);
 }
 
-/* Photo card (top images + competition) */
-
-.photo-card__frame {
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: 1;
-  min-height: 0;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.photo-card__image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0;
-  transition: opacity 0.25s var(--ease);
-}
-
-.photo-card__frame.is-loaded .photo-card__image {
-  opacity: 1;
-}
-
-.photo-card__fallback {
-  font-size: 13px;
-  color: var(--text-subtle);
-}
-
-.photo-card__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex: none;
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border);
-}
-
-.photo-card__titles {
-  min-width: 0;
-  flex: 1;
-}
-
-.photo-card__title {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.photo-card__author {
-  font-size: 12px;
-  color: var(--text-subtle);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.photo-card__votes {
-  color: var(--accent);
-  font-weight: 600;
-}
-
 /* Vote button */
 
 .vote-button {
@@ -1601,6 +1549,28 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+}
+
+/* Right side of the details (competition upvote tag). */
+.post-details__action {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+/* Orange tag with the entry's Reddit upvotes. */
+.upvote-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px 4px 7px;
+  border-radius: var(--radius-pill);
+  background: #ff5a1f;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 8px rgb(255 90 31 / 0.4);
 }
 
 .avatar {
