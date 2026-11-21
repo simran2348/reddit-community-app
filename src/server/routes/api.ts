@@ -7,12 +7,14 @@ import type {
   ErrorResponse,
   JoinResponse,
   PreferencesResponse,
+  WinnersResponse,
   RankingsResponse,
   VoteCountsResponse,
   VoteResponse,
 } from '../../shared/api';
 import { isRankingPeriod, parsePreferences } from '../../shared/api';
 import { getPreferences, savePreferences } from '../core/preferences';
+import { listWinners } from '../core/winners';
 import { getCommunity, joinCommunity } from '../core/community';
 import { getRankings } from '../core/rankings';
 import { getCommunitySettings } from '../core/settings';
@@ -51,6 +53,15 @@ api.get('/config', async (c) => {
     });
   } catch (error) {
     return handleError(c, error, 'Could not load settings.');
+  }
+});
+
+/** GET /api/winners – saved competition and monthly winners, newest first. */
+api.get('/winners', async (c) => {
+  try {
+    return c.json<WinnersResponse>({ records: await listWinners() });
+  } catch (error) {
+    return handleError(c, error, 'Could not load winners.');
   }
 });
 

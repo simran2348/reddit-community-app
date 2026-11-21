@@ -6,4 +6,3 @@ export const PERIOD_LABEL: Record<RankingPeriod, string> = {
   month: 'This month',
   year: 'This year',
 };
-

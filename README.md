@@ -26,6 +26,13 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
   - **Send feedback to the mods** (bottom): opens a modmail compose to the community.
   - Choices are saved to the viewer's Reddit account (Redis, `preferences:<userId>`), so they're the same on every device where they're logged in. A copy in browser storage makes the app start instantly; logged-out viewers keep the browser copy only.
 - **Bottom nav shadow:** a soft shadow above the nav separates it from the screen content.
+- **Winners (👑 tab):**
+  - **Competition winner:** when the competition's end date (app setting, end of that day UTC) has passed, the hourly check picks the top entry by Reddit upvotes, gives it the winner flair (default `🏆 {theme} {year}`) and saves the **top 10** as a record. The competition then counts as ended and its tab is hidden (the app can't switch off the setting itself, so the toggle in the portal stays on). To run a new one, set a new theme and end date.
+  - **Top post of the month:** after each month ends, the hourly check gives last calendar month's top image post the monthly flair (default `⬆️ {month} {year}`) and saves it.
+  - Records are the app's own snapshots in Redis (`winners:records`), so they don't depend on what flair a subreddit uses. Each award happens once, so re-running is safe. If flair can't be set (e.g. a subreddit that only allows preset flairs, without the template ID setting), the record is still saved and the error is logged.
+  - The tab has a top panel with a **Monthly / Theme** switch and a dropdown (the phone's native picker) of that type's awards, newest first: months for Monthly, competition themes for Theme. It opens on whichever type has the newest award and remembers the choice in each. It shows the chosen award's posts in the carousel with medals and upvotes as they were when awarded.
+  - **Deleted or removed winners are hidden:** when the tab loads, each saved post is re-checked (cached for 30 minutes per post). Deleted, mod-removed or NSFW posts are hidden. Awards are final, so nobody moves up: the other entries keep their places and medals, and an award with no posts left disappears from the dropdown. A failed check counts as visible, so a Reddit hiccup never hides a winner.
+  - Moderators can run the checks immediately from the subreddit menu: **Run winner checks now**.
 - **Photo competition:**
   - Moderators can turn it on in the app settings.
   - Image posts with a set flair become entries; leave the flair empty to include all image posts.
@@ -47,6 +54,10 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
 | Dev portal → app settings | Photo competition theme | Theme name shown in the competition's info box (optional) |
 | Dev portal → app settings | Photo competition theme description | Short summary of the event (1-3 sentences, line breaks kept) |
 | Dev portal → app settings | Photo competition post link | Post with the full details and rules; shown as a button in the info box. Must be an https link (`https://` is added if missing) |
+| Dev portal → app settings | Photo competition end date | `YYYY-MM-DD`; the competition ends at the end of that day (UTC) and the winner is awarded automatically. Empty = no end |
+| Dev portal → app settings | Competition winner flair | Winner flair template; `{theme}` and `{year}` are filled in when the winner is picked (e.g. `🏆 Sunsets 2026`). Editable; changes apply to future winners only |
+| Dev portal → app settings | Monthly top post flair | Flair template for each month's top image post; `{month}` and `{year}` are filled in when the winner is picked (e.g. `⬆️ May 2026`). Editable; changes apply to future winners only |
+| Dev portal → app settings | Winner flair template ID | Optional preset flair template used with the winner text |
 | Dev portal → app settings | Photo competition post flair | Flair that marks entries (empty = all image posts). Matching ignores emoji, punctuation, case and decorative fonts, so `Photography Contest` matches `📸 \| 𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝘆 𝗖𝗼𝗻𝘁𝗲𝘀𝘁` |
 | `devvit.json` → `dev.subreddit` | — | Subreddit used by `npm run dev` |
 
@@ -59,10 +70,11 @@ All UI icons come from [lucide-react](https://lucide.dev) (tree-shaken, so only 
 ```
 src/
   server/                 Devvit backend (Hono)
-    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/preferences, /api/competition(/votes|/vote)
-    routes/menu.ts        Moderator menu: create the post
+    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/preferences, /api/winners, /api/competition(/votes|/vote)
+    routes/menu.ts        Moderator menu: create the post, run winner checks now
     routes/triggers.ts    On install: create the post; post submit/flair/delete: update the competition index
-    routes/scheduler.ts   Every 15 min: competition catch-up scan for missed triggers
+    routes/scheduler.ts   Every 15 min: competition catch-up scan; hourly: winner checks
+    core/winners.ts       Competition and monthly awards (flair + saved records)
     core/rankings.ts      Top image (and optionally text) posts + author avatars (Redis-cached)
     core/community.ts     Community banner/icon/members (cached) and Join
     core/competition.ts   Entries, vote counts, server-side vote validation
@@ -110,14 +122,10 @@ public/                   background.jpg, snoo.png, p1–p3.png (medals)
 | `npm run launch` | Deploy and publish for review |
 | `npm run login` | Log the CLI into Reddit |
 
+`vite.config.ts` hides two harmless build warnings: lucide-react's `"use client"` directives (meant for React Server Components, which this app doesn't use) and protobufjs's `eval`.
+
 Requires Node 24+. CI (`.github/workflows/ci.yaml`) runs type check, lint, unit tests and build on every push to `main`.
 
 ## Known leftovers
 
-`src/client/game.tsx`, `game.html` and `hooks/useCounter.ts` are leftovers from the starter template, and `useCounter.ts` breaks the type check in CI. Remove them with:
-
-```sh
-git rm src/client/game.tsx src/client/game.html src/client/hooks/useCounter.ts
-```
-
-These are also unused and safe to remove: `index.css`, `components/InfoPopover.tsx`, `components/AppHeader.tsx`, `components/TimeFilter.tsx`, `components/MainNavigation.tsx`, `components/SettingsButton.tsx`, and `server/routes/forms.ts`. If you remove `forms.ts`, also remove its import and route in `server/index.ts`.
+These files are unused and safe to remove: `index.css`, `components/InfoPopover.tsx`, `components/AppHeader.tsx`, `components/TimeFilter.tsx`, `components/MainNavigation.tsx`, `components/SettingsButton.tsx`, `components/VoteButton.tsx`, `services/votingService.ts` (old in-app voting), and `server/routes/forms.ts`. If you remove `forms.ts`, also remove its import and route in `server/index.ts`.

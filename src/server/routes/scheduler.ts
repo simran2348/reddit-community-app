@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { catchUpEntries } from '../core/competition';
+import { runWinnerChecks } from '../core/winners';
 
 export const scheduler = new Hono();
 
@@ -12,6 +13,19 @@ scheduler.post('/competition-catch-up', async (c) => {
     await catchUpEntries();
   } catch (error) {
     console.error('[competition] catch-up failed', error);
+  }
+  return c.json({}, 200);
+});
+
+/**
+ * Hourly (see devvit.json): awards a competition whose end date has passed
+ * and last month's top post. Each award happens once.
+ */
+scheduler.post('/winner-checks', async (c) => {
+  try {
+    await runWinnerChecks();
+  } catch (error) {
+    console.error('[winners] scheduled check failed', error);
   }
   return c.json({}, 200);
 });

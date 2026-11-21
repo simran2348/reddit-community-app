@@ -756,6 +756,88 @@
   background: #e84d14;
 }
 
+/* ---------- Winners screen ---------- */
+
+.screen--winners .screen__body {
+  gap: var(--space-2);
+}
+
+/* Top panel: Monthly / Theme switch next to that type's dropdown (stacked
+   on narrow phones). */
+.winners__panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: rgb(0 0 0 / 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.winners__kinds {
+  flex: 1 1 170px;
+  border: 0;
+  background: rgb(255 255 255 / 0.1);
+}
+
+.winners__kinds .toggle-group__option {
+  color: rgb(255 255 255 / 0.75);
+}
+
+.winners__kinds .toggle-group__option.is-selected {
+  color: #fff;
+}
+
+/* Native select (the phone's own picker), styled as a dark pill. */
+.winners__picker {
+  position: relative;
+  flex: 1 1 170px;
+  min-width: 0;
+}
+
+.winners__select {
+  width: 100%;
+  min-height: 36px;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0 36px 0 var(--space-4);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: var(--radius-pill);
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.winners__select:disabled {
+  color: rgb(255 255 255 / 0.5);
+  cursor: default;
+}
+
+.winners__select:focus-visible {
+  outline: 2px solid var(--accent-apps);
+  outline-offset: 2px;
+}
+
+.winners__chevron {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: #ff6a33;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 /* ---------- Slideshow (black overlay over the whole post) ---------- */
 
 .slideshow {
@@ -2070,7 +2152,11 @@
 /* Edge-to-edge bar: bleeds through the app's side and bottom padding. */
 .bottom-nav {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  /* First item (podium + label) wider; the rest share the space, however
+     many there are (the competition tab is hidden when it's not running). */
+  grid-template-columns: minmax(0, 1.6fr);
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: var(--space-1);
   flex: none;
   margin: 0 calc(-1 * var(--app-pad-x)) calc(-1 * var(--app-pad-y));

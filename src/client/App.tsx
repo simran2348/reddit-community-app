@@ -7,9 +7,10 @@ import { PERIOD_LABEL } from './periods';
 import { usePreferences } from './preferences';
 import { CompetitionScreen } from './screens/CompetitionScreen';
 import { TopImagesScreen } from './screens/TopImagesScreen';
+import { WinnersScreen } from './screens/WinnersScreen';
 import { fetchConfig } from './services/configService';
 
-type Section = 'images' | 'competition';
+type Section = 'images' | 'competition' | 'winners';
 
 /**
  * Splash-only dashboard with a bottom navigation bar: rankings, competition
@@ -22,6 +23,7 @@ export const App = () => {
   const [section, setSection] = useState<Section>('images');
   const [competitionEnabled, setCompetitionEnabled] = useState(false);
   const [competitionVisited, setCompetitionVisited] = useState(false);
+  const [winnersVisited, setWinnersVisited] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { prefs, update } = usePreferences();
 
@@ -49,11 +51,18 @@ export const App = () => {
     setSettingsOpen(false);
     setSection(target);
     if (target === 'competition') setCompetitionVisited(true);
+    if (target === 'winners') setWinnersVisited(true);
   }, []);
 
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
-  const navActive: NavTarget = settingsOpen ? 'settings' : section;
+  // The competition tab disappears when it's off or has ended; if it was
+  // open, fall back to Top posts.
+  const visibleSection: Section =
+    section === 'competition' && !competitionEnabled ? 'images' : section;
+  if (visibleSection !== section) setSection(visibleSection);
+
+  const navActive: NavTarget = settingsOpen ? 'settings' : visibleSection;
 
   return (
     <div
@@ -79,6 +88,11 @@ export const App = () => {
                 ) : (
                   <EmptyState icon="🏆" title="No competition right now" />
                 )}
+              </div>
+            )}
+            {winnersVisited && (
+              <div className="app__screen" hidden={section !== 'winners'}>
+                <WinnersScreen />
               </div>
             )}
           </div>

@@ -334,6 +334,21 @@ const loadEntries = async (flair: Flair): Promise<CachedEntry[]> => {
   }));
 };
 
+/**
+ * Final standings for awarding: freshly loaded (not cached), most Reddit
+ * upvotes first (ties: newest first), top `count`.
+ */
+export const getFinalStandings = async (
+  flair: Flair,
+  count: number
+): Promise<CompetitionEntry[]> => {
+  const entries = await loadEntries(flair);
+  return entries
+    .map(({ authorId: _authorId, ...entry }) => ({ ...entry, voteCount: 0 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count);
+};
+
 const getCachedEntries = (flair: Flair): Promise<CachedEntry[]> =>
   cached(
     keys(flair).entries,

@@ -165,3 +165,32 @@ export type CommunityResponse = {
 };
 
 export type JoinResponse = { joined: true };
+
+/** One post in the winners records (a snapshot taken when it was awarded). */
+export type WinnerEntry = {
+  id: string;
+  title: string;
+  author: string;
+  authorAvatarUrl: string | null;
+  imageUrl: string;
+  /** Upvotes when it was awarded. */
+  score: number;
+  /** 1 = winner. Competitions keep the top 10. */
+  rank: number;
+  postUrl: string;
+};
+
+export type WinnerRecord = {
+  /** e.g. "monthly:2026-05" or "competition:photo-contest:2026-06-30". */
+  id: string;
+  kind: 'monthly' | 'competition';
+  /** Shown in the selector, e.g. "May 2026" or "Monsoon Moods 2026". */
+  label: string;
+  awardedAt: string;
+  entries: WinnerEntry[];
+};
+
+export type WinnersResponse = {
+  /** Newest first. */
+  records: WinnerRecord[];
+};
