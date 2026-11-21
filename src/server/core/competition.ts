@@ -361,6 +361,8 @@ const readViewer = async (
 
 export const getCompetition = async (): Promise<CompetitionResponse> => {
   const flair = await requireCompetition();
+  const { competitionTheme, competitionThemeDescription, competitionPostUrl } =
+    await getCommunitySettings();
   const cachedEntries = await getCachedEntries(flair);
   const [counts, viewer] = await Promise.all([
     readCounts(flair),
@@ -375,7 +377,17 @@ export const getCompetition = async (): Promise<CompetitionResponse> => {
     }))
     .sort((a, b) => b.voteCount - a.voteCount);
 
-  return { subreddit: getSourceSubreddit(), flair, entries, viewer };
+  return {
+    subreddit: getSourceSubreddit(),
+    flair,
+    theme: {
+      title: competitionTheme,
+      description: competitionThemeDescription,
+      postUrl: competitionPostUrl,
+    },
+    entries,
+    viewer,
+  };
 };
 
 export const getVoteCounts = async (): Promise<VoteCountsResponse> => {

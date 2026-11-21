@@ -6,11 +6,13 @@ import type {
   ConfigResponse,
   ErrorResponse,
   JoinResponse,
+  PreferencesResponse,
   RankingsResponse,
   VoteCountsResponse,
   VoteResponse,
 } from '../../shared/api';
-import { isRankingPeriod } from '../../shared/api';
+import { isRankingPeriod, parsePreferences } from '../../shared/api';
+import { getPreferences, savePreferences } from '../core/preferences';
 import { getCommunity, joinCommunity } from '../core/community';
 import { getRankings } from '../core/rankings';
 import { getCommunitySettings } from '../core/settings';
@@ -49,6 +51,44 @@ api.get('/config', async (c) => {
     });
   } catch (error) {
     return handleError(c, error, 'Could not load settings.');
+  }
+});
+
+/** GET /api/preferences – the viewer's saved Settings choices. */
+api.get('/preferences', async (c) => {
+  try {
+    return c.json<PreferencesResponse>({ preferences: await getPreferences() });
+  } catch (error) {
+    return handleError(c, error, 'Could not load your settings.');
+  }
+});
+
+/** PUT /api/preferences – save the viewer's Settings choices. */
+api.put('/preferences', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    body = null;
+  }
+  const preferences = parsePreferences(body);
+  if (!preferences) {
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        code: 'INVALID_REQUEST',
+        message: 'Invalid settings.',
+      },
+      400
+    );
+  }
+  try {
+    const saved = await savePreferences(preferences);
+    return c.json<PreferencesResponse>({
+      preferences: saved ? preferences : null,
+    });
+  } catch (error) {
+    return handleError(c, error, 'Could not save your settings.');
   }
 });
 

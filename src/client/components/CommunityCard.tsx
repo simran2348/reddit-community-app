@@ -4,6 +4,7 @@ import { navigateTo, showToast } from '@devvit/web/client';
 import { Check, MessageSquareText, Plus, Users } from 'lucide-react';
 import type { CommunityResponse } from '../../shared/api';
 import { formatCount } from '../format';
+import { NoBannerPattern } from './NoBannerPattern';
 import { fetchCommunity, joinCommunity } from '../services/communityService';
 
 type Status =
@@ -20,7 +21,7 @@ const CommunityIcon = ({ url }: { url: string | null }) => {
     <span className="community__icon">
       {!loaded && (
         <span className="community__icon-mark" aria-hidden="true">
-          r/
+          r<span className="community__icon-slash">/</span>
         </span>
       )}
       {showImage && (
@@ -99,7 +100,7 @@ export const CommunityCard = memo(({ children }: { children: ReactNode }) => {
           <div className="community__row">
             <span className="community__icon">
               <span className="community__icon-mark" aria-hidden="true">
-                r/
+                r<span className="community__icon-slash">/</span>
               </span>
             </span>
             <div className="community__text">
@@ -121,14 +122,19 @@ export const CommunityCard = memo(({ children }: { children: ReactNode }) => {
   const { data } = status;
   const bannerStyle = data.bannerUrl
     ? { backgroundImage: `url("${data.bannerUrl}")` }
-    : data.bannerColor
-      ? { backgroundColor: data.bannerColor }
-      : undefined;
+    : undefined;
 
   return (
     <>
       <section className="community" aria-label={`r/${data.name}`}>
-        <div className="community__banner" style={bannerStyle} />
+        {data.bannerUrl ? (
+          <div className="community__banner" style={bannerStyle} />
+        ) : (
+          <div className="community__banner no-banner">
+            <NoBannerPattern seed={data.name} />
+            <p className="no-banner__text">This subreddit has no banner</p>
+          </div>
+        )}
         <div className="community__row">
           <CommunityIcon url={data.iconUrl} />
           <div className="community__text">

@@ -8,6 +8,32 @@ export type RankingPeriod = 'week' | 'month' | 'year';
 export const isRankingPeriod = (value: unknown): value is RankingPeriod =>
   value === 'week' || value === 'month' || value === 'year';
 
+export type SlideshowSeconds = 3 | 5;
+
+export const isSlideshowSeconds = (value: unknown): value is SlideshowSeconds =>
+  value === 3 || value === 5;
+
+/** Viewer's Settings choices, saved to their Reddit account when logged in. */
+export type UserPreferences = {
+  period: RankingPeriod;
+  slideshowSeconds: SlideshowSeconds;
+};
+
+/** Validates an unknown value (request body, stored JSON) field by field. */
+export const parsePreferences = (value: unknown): UserPreferences | null => {
+  if (typeof value !== 'object' || value === null) return null;
+  const period = 'period' in value ? value.period : undefined;
+  const seconds =
+    'slideshowSeconds' in value ? value.slideshowSeconds : undefined;
+  if (!isRankingPeriod(period) || !isSlideshowSeconds(seconds)) return null;
+  return { period, slideshowSeconds: seconds };
+};
+
+export type PreferencesResponse = {
+  /** Saved choices, or null when logged out or nothing saved yet. */
+  preferences: UserPreferences | null;
+};
+
 export type ConfigResponse = {
   /** Subreddit the app is installed in; all posts are read from here. */
   subreddit: string;
@@ -70,10 +96,20 @@ export type ViewerVoteState = {
   ownPostIds: string[];
 };
 
+/** Set by mods in the app settings; shown in the competition's info box. */
+export type CompetitionTheme = {
+  title: string | null;
+  /** Short summary of the event. */
+  description: string | null;
+  /** Post with the full details and rules. */
+  postUrl: string | null;
+};
+
 export type CompetitionResponse = {
   subreddit: string;
   /** Entry flair, or null when every image post is an entry. */
   flair: string | null;
+  theme: CompetitionTheme;
   entries: CompetitionEntry[];
   viewer: ViewerVoteState;
 };

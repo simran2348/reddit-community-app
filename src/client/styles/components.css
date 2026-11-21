@@ -545,6 +545,206 @@
   transform: scale(0.94);
 }
 
+/* ---------- Competition theme info ----------
+   Orange info button (top right, same style as the play button) and a
+   modal that grows from the centre. The backdrop bleeds to the splash edges
+   but stops at the bottom nav; the box keeps a margin from every edge. */
+
+.theme-info__button {
+  position: absolute;
+  top: 0;
+  right: calc((38px - 32px) / 2);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ff5a1f;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(255 90 31 / 0.45);
+  transition:
+    background-color 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+
+/* Exact centring of the ⓘ glyph inside the circle. */
+.theme-info__glyph {
+  display: block;
+  flex: none;
+}
+
+/* Line the button up with the arrow column on wider screens too. */
+@media (min-width: 560px) {
+  .theme-info__button {
+    right: calc(var(--space-2) + (40px - 32px) / 2);
+  }
+}
+
+.theme-info__button:hover {
+  background: #e84d14;
+}
+
+.theme-info__button:active {
+  transform: scale(0.94);
+}
+
+.theme-modal {
+  position: absolute;
+  inset: calc(-1 * var(--app-pad-y)) calc(-1 * var(--app-pad-x))
+    calc(-1 * var(--app-pad-y));
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.72);
+  animation: theme-modal-fade 0.2s var(--ease);
+}
+
+/* Closing mirrors opening: backdrop fades out, box shrinks to the centre. */
+.theme-modal.is-closing {
+  animation: theme-modal-fade-out 0.24s var(--ease) forwards;
+}
+
+.theme-modal.is-closing .theme-modal__box {
+  position: relative;
+  animation: theme-modal-shrink 0.22s var(--ease) forwards;
+}
+
+.theme-modal__box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(360px, 100%);
+  max-height: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: #15191c;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    0 20px 48px rgb(0 0 0 / 0.55);
+  color: #fff;
+  outline: none;
+  animation: theme-modal-grow 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+@keyframes theme-modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes theme-modal-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes theme-modal-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes theme-modal-shrink {
+  to {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* Centred above the theme name, like a crown. */
+.theme-modal__label {
+  margin: 0 0 var(--space-1);
+  color: #ff6a33;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Centred theme and quoted description; scrolls only if it doesn't fit. */
+.theme-modal__content {
+  min-height: 0;
+  overflow-y: auto;
+  text-align: center;
+}
+
+.theme-modal__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.theme-modal__description {
+  margin: var(--space-3) 0 0;
+  color: rgb(255 255 255 / 0.85);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+/* Big orange curly quotes around the description. */
+.theme-modal__quote {
+  color: #ff6a33;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 26px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 0;
+  vertical-align: -0.3em;
+}
+
+.theme-modal__quote:first-child {
+  margin-right: 3px;
+}
+
+.theme-modal__quote:last-child {
+  margin-left: 3px;
+}
+
+.theme-modal__more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: none;
+  padding-top: var(--space-3);
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  text-align: center;
+}
+
+.theme-modal__more-text {
+  margin: 0;
+  color: rgb(255 255 255 / 0.6);
+  font-size: 12.5px;
+}
+
+.theme-modal__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: #ff5a1f;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.theme-modal__link:hover {
+  background: #e84d14;
+}
+
 /* ---------- Slideshow (black overlay over the whole post) ---------- */
 
 .slideshow {
@@ -1667,6 +1867,47 @@
 
 .community__icon-mark {
   font-weight: 800;
+}
+
+/* A little space between the "r" and the "/". */
+.community__icon-slash {
+  margin-left: 2px;
+}
+
+/* ---------- No-banner pattern (communities without a banner) ---------- */
+
+.no-banner {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+}
+
+.no-banner__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Soft dark halo behind the text so it reads over the brightest glyphs. */
+.no-banner__text {
+  position: relative;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: radial-gradient(
+    closest-side,
+    rgb(0 0 0 / 0.85),
+    rgb(0 0 0 / 0.55) 70%,
+    rgb(0 0 0 / 0)
+  );
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.9);
 }
 
 /* Icon fades in over the "r/" once it has loaded. */

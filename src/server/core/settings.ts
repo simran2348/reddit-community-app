@@ -4,17 +4,31 @@ export type CommunitySettings = {
   competitionEnabled: boolean;
   /** Top posts also ranks text posts (never the competition). */
   rankingsIncludeText: boolean;
+  /** Competition theme name and description; null when not set. */
+  competitionTheme: string | null;
+  competitionThemeDescription: string | null;
+  /** Post with the full competition details; null when unset or invalid. */
+  competitionPostUrl: string | null;
   /** Flair for competition entries; null means every image post is eligible. */
   competitionFlair: string | null;
 };
 
 export const getCommunitySettings = async (): Promise<CommunitySettings> => {
-  const [competitionEnabled, competitionFlair, rankingsIncludeText] =
-    await Promise.all([
-      settings.get<boolean>('competitionEnabled'),
-      settings.get<string>('competitionFlair'),
-      settings.get<boolean>('rankingsIncludeText'),
-    ]);
+  const [
+    competitionEnabled,
+    competitionFlair,
+    rankingsIncludeText,
+    competitionTheme,
+    competitionThemeDescription,
+    competitionPostLink,
+  ] = await Promise.all([
+    settings.get<boolean>('competitionEnabled'),
+    settings.get<string>('competitionFlair'),
+    settings.get<boolean>('rankingsIncludeText'),
+    settings.get<string>('competitionTheme'),
+    settings.get<string>('competitionThemeDescription'),
+    settings.get<string>('competitionPostLink'),
+  ]);
 
   const flair =
     typeof competitionFlair === 'string' ? competitionFlair.trim() : '';
@@ -23,7 +37,32 @@ export const getCommunitySettings = async (): Promise<CommunitySettings> => {
     competitionEnabled: competitionEnabled === true,
     rankingsIncludeText: rankingsIncludeText === true,
     competitionFlair: flair.length > 0 ? flair : null,
+    competitionTheme: textOrNull(competitionTheme),
+    competitionThemeDescription: textOrNull(competitionThemeDescription),
+    competitionPostUrl: httpsUrlOrNull(competitionPostLink),
   };
+};
+
+/**
+ * A valid https link, or null. A bare "reddit.com/..." gets https:// added;
+ * anything that still isn't a proper https URL is ignored rather than shown.
+ */
+const httpsUrlOrNull = (value: string | undefined): string | null => {
+  const text = textOrNull(value);
+  if (!text) return null;
+  const withScheme = /^[a-z]+:\/\//i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(withScheme);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Trimmed text, or null when unset or blank. */
+const textOrNull = (value: string | undefined): string | null => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed.length > 0 ? trimmed : null;
 };
 
 /**

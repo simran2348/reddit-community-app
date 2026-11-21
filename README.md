@@ -21,14 +21,15 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
   - *Cog*: settings.
 - **Settings screen:**
   - Opens in place like the other tabs (no slide), edge to edge above the nav, with a dark see-through backdrop over the background photo.
-  - **Community header:** the source subreddit's banner (edge to edge), icon, name and member count, with a **Join** button. Join subscribes the viewer to the subreddit the app is installed in (`subscribeToCurrentSubreddit`, needs `SUBSCRIBE_TO_SUBREDDIT` in `devvit.json` permissions). Reddit doesn't tell apps whether a user is already a member, so "Joined" reflects joins made through this button (stored in Redis). Icon and banner are requested at full size (Reddit's resize query is dropped on `styles.redditmedia.com`) so they stay sharp. Info is cached for 30 minutes and only fetched when Settings is first opened.
+  - **Community header:** the source subreddit's banner (edge to edge; communities without one get a generated black dot-matrix pattern of tiny white and orange glyphs that gently twinkles, with "This subreddit has no banner" in the middle, `components/NoBannerPattern.tsx`), icon, name and member count, with a **Join** button. Join subscribes the viewer to the subreddit the app is installed in (`subscribeToCurrentSubreddit`, needs `SUBSCRIBE_TO_SUBREDDIT` in `devvit.json` permissions). Reddit doesn't tell apps whether a user is already a member, so "Joined" reflects joins made through this button (stored in Redis). Icon and banner are requested at full size (Reddit's resize query is dropped on `styles.redditmedia.com`) so they stay sharp. Info is cached for 30 minutes and only fetched when Settings is first opened.
   - **Inline options:** *Top posts* (Week / Month / Year) and *Slideshow* (3s / 5s), each on one row.
   - **Send feedback to the mods** (bottom): opens a modmail compose to the community.
-  - Choices are saved per viewer in browser storage.
+  - Choices are saved to the viewer's Reddit account (Redis, `preferences:<userId>`), so they're the same on every device where they're logged in. A copy in browser storage makes the app start instantly; logged-out viewers keep the browser copy only.
 - **Bottom nav shadow:** a soft shadow above the nav separates it from the screen content.
 - **Photo competition:**
   - Moderators can turn it on in the app settings.
   - Image posts with a set flair become entries; leave the flair empty to include all image posts.
+  - **Theme info:** when mods set a theme, description or post link, a round orange ⓘ button sits in the competition screen's top-right corner (hidden while the modal is open). It opens a modal that grows from the centre (and shrinks back when closed) over a dark backdrop (the bottom nav stays visible): an orange THEME label centred above the theme name, the short description in orange quotes, then "For more info, visit the competition post" and an orange **Competition post** button (when the link is set). A tap outside the box or Esc closes it, and switching tabs closes it straight away (`components/ThemeInfo.tsx`).
   - One vote per user per photo, and you can't vote for your own. These rules are enforced on the server.
   - Entries are ordered by competition votes (most first; ties newest first). The top 3 by votes get a medal (`public/p1.png`–`p3.png`) on the photo's top-left corner; entries with equal votes share a place, and entries with no votes get none. Medals update right after a vote; the order refreshes on the next load.
 - **Avatars:** 40px circles showing the author's snoovatar, or a slightly zoomed `public/snoo.png` when they don't have one.
@@ -41,6 +42,9 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
 | `src/server/core/source.ts` | `getSourceSubreddit()` | Subreddit the posts come from: the one the app is installed in (needed for triggers) |
 | Dev portal → app settings | Include text posts in Top posts | Also ranks text posts in Top posts (not the competition). Off by default |
 | Dev portal → app settings | Enable photo competition | Turns the competition on, and shows the orange pulse on the trophy |
+| Dev portal → app settings | Photo competition theme | Theme name shown in the competition's info box (optional) |
+| Dev portal → app settings | Photo competition theme description | Short summary of the event (1-3 sentences, line breaks kept) |
+| Dev portal → app settings | Photo competition post link | Post with the full details and rules; shown as a button in the info box. Must be an https link (`https://` is added if missing) |
 | Dev portal → app settings | Photo competition post flair | Flair that marks entries (empty = all image posts). Matching ignores emoji, punctuation, case and decorative fonts, so `Photography Contest` matches `📸 \| 𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝘆 𝗖𝗼𝗻𝘁𝗲𝘀𝘁` |
 | `devvit.json` → `dev.subreddit` | — | Subreddit used by `npm run dev` |
 
@@ -53,7 +57,7 @@ All UI icons come from [lucide-react](https://lucide.dev) (tree-shaken, so only 
 ```
 src/
   server/                 Devvit backend (Hono)
-    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/competition(/votes|/vote)
+    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/preferences, /api/competition(/votes|/vote)
     routes/menu.ts        Moderator menu: create the post
     routes/triggers.ts    On install: create the post; post submit/flair/delete: update the competition index
     routes/scheduler.ts   Every 15 min: competition catch-up scan for missed triggers
@@ -89,7 +93,7 @@ public/                   background.jpg, snoo.png, p1–p3.png (medals)
   - The list is cached for 5 minutes and cleared by any trigger. Vote counts are always live.
   - `[competition]` lines in `npx devvit logs` show the backfill, each indexed post, catch-up results, and fetch counts.
 - **Votes** are stored in Redis, keyed by Reddit post ID. Duplicate votes are blocked with an atomic `HSETNX` per user and post.
-- **Viewer preferences** (period, slideshow interval) live in `localStorage` and fail safely if storage is unavailable.
+- **Viewer preferences** (period, slideshow interval) are stored per Reddit account in Redis (`GET`/`PUT /api/preferences`, validated on the server) and mirrored in `localStorage`, which fails safely if unavailable.
 
 ## Commands
 

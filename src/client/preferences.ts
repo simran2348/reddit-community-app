@@ -1,17 +1,19 @@
-import { useCallback, useState } from 'react';
-import type { RankingPeriod } from '../shared/api';
-import { isRankingPeriod } from '../shared/api';
-
-export type SlideshowSeconds = 3 | 5;
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { SlideshowSeconds, UserPreferences } from '../shared/api';
+import { isRankingPeriod, isSlideshowSeconds } from '../shared/api';
+import {
+  fetchPreferences,
+  savePreferences,
+} from './services/preferencesService';
 
 export const SLIDESHOW_OPTIONS: readonly SlideshowSeconds[] = [3, 5];
 
-/** Per-viewer display preferences (never shared, never sent to the server). */
-export type Preferences = {
-  period: RankingPeriod;
-  /** Time per image in the slideshow. */
-  slideshowSeconds: SlideshowSeconds;
-};
+/**
+ * Per-viewer Settings choices. Kept in this browser's storage for an
+ * instant start, and saved to the viewer's Reddit account (server, Redis)
+ * when logged in, so they follow them to other devices.
+ */
+export type Preferences = UserPreferences;
 
 const STORAGE_KEY = 'leaderboard:preferences';
 
@@ -19,9 +21,6 @@ const DEFAULTS: Preferences = {
   period: 'week',
   slideshowSeconds: 5,
 };
-
-const isSlideshowSeconds = (value: unknown): value is SlideshowSeconds =>
-  value === 3 || value === 5;
 
 /** Validates each field so a stale or tampered value falls back safely. */
 const parse = (raw: string | null): Preferences => {
@@ -68,12 +67,38 @@ const write = (prefs: Preferences): void => {
 
 export const usePreferences = () => {
   const [prefs, setPrefs] = useState<Preferences>(read);
+  const current = useRef(prefs);
+  // Set once the viewer changes something here, so a slower server load
+  // never overwrites a choice they just made.
+  const changedLocally = useRef(false);
+
+  // Account copy wins over this device's copy (logged-in viewers only).
+  useEffect(() => {
+    let cancelled = false;
+    fetchPreferences()
+      .then(({ preferences }) => {
+        if (cancelled || !preferences || changedLocally.current) return;
+        current.current = preferences;
+        write(preferences);
+        setPrefs(preferences);
+      })
+      .catch((error: unknown) => {
+        console.warn('Failed to load saved settings', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const update = useCallback((changes: Partial<Preferences>) => {
-    setPrefs((current) => {
-      const next = { ...current, ...changes };
-      write(next);
-      return next;
+    changedLocally.current = true;
+    const next = { ...current.current, ...changes };
+    current.current = next;
+    setPrefs(next);
+    write(next);
+    // Logged-out viewers just get a null back; failures keep the local copy.
+    savePreferences(next).catch((error: unknown) => {
+      console.warn('Failed to save settings', error);
     });
   }, []);
 

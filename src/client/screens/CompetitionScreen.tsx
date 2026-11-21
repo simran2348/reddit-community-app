@@ -18,6 +18,7 @@ import {
   fetchCompetition,
   fetchVoteCounts,
 } from '../services/competitionService';
+import { ThemeInfo } from '../components/ThemeInfo';
 import { imagesToPreload, preloadImages } from '../preloadImages';
 import { ApiError } from '../services/http';
 import { submitVote } from '../services/votingService';
@@ -197,6 +198,7 @@ export const CompetitionScreen = ({ isActive }: CompetitionScreenProps) => {
             onVote={onVote}
           />
         )}
+        {!showLoader && data && <ThemeInfo theme={data.theme} active={isActive} />}
       </div>
     </section>
   );
