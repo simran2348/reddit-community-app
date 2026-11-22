@@ -164,7 +164,11 @@ const hasRecord = async (id: string): Promise<boolean> =>
 const saveRecord = (record: WinnerRecord) =>
   redis.hSet(RECORDS_KEY, { [record.id]: JSON.stringify(record) });
 
-/** Applies the winner flair; a failure is logged, the record is kept. */
+/**
+ * Applies the winner flair: the filled-in text, styled by the flair template
+ * when one is set (its colours; its own text is replaced). A failure is
+ * logged and the record is kept.
+ */
 const applyFlair = async (
   postId: string,
   text: string,
@@ -227,7 +231,7 @@ export const checkCompetitionWinner = async (): Promise<string> => {
   await applyFlair(
     winner.id,
     fill(settings.competitionWinnerFlair, { theme, year }),
-    settings.winnerFlairTemplateId
+    settings.competitionWinnerFlairTemplateId
   );
   return `competition: "${label}" won by ${winner.id}`;
 };
@@ -298,7 +302,7 @@ export const checkMonthlyWinner = async (): Promise<string> => {
   await applyFlair(
     winner.id,
     fill(settings.monthlyWinnerFlair, { month, year }),
-    settings.winnerFlairTemplateId
+    settings.monthlyWinnerFlairTemplateId
   );
   return `monthly: ${label} won by ${winner.id}`;
 };

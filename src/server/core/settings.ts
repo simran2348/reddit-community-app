@@ -23,8 +23,13 @@ export type CommunitySettings = {
   /** Flair text templates for winners ({theme}, {month}, {year}). */
   competitionWinnerFlair: string;
   monthlyWinnerFlair: string;
-  /** Optional flair template ID applied with the winner text. */
-  winnerFlairTemplateId: string | null;
+  /**
+   * Optional flair template IDs (Mod Tools → Post flair) giving each winner
+   * flair its style; the text above always replaces the template's text.
+   * null = plain text flair.
+   */
+  competitionWinnerFlairTemplateId: string | null;
+  monthlyWinnerFlairTemplateId: string | null;
   /** Top posts also ranks text posts (never the competition). */
   rankingsIncludeText: boolean;
   /** Competition theme name and description; null when not set. */
@@ -47,7 +52,8 @@ export const getCommunitySettings = async (): Promise<CommunitySettings> => {
     competitionEndDate,
     competitionWinnerFlair,
     monthlyWinnerFlair,
-    winnerFlairTemplateId,
+    competitionWinnerFlairTemplateId,
+    monthlyWinnerFlairTemplateId,
   ] = await Promise.all([
     settings.get<boolean>('competitionEnabled'),
     settings.get<string>('competitionFlair'),
@@ -58,7 +64,8 @@ export const getCommunitySettings = async (): Promise<CommunitySettings> => {
     settings.get<string>('competitionEndDate'),
     settings.get<string>('competitionWinnerFlair'),
     settings.get<string>('monthlyWinnerFlair'),
-    settings.get<string>('winnerFlairTemplateId'),
+    settings.get<string>('competitionWinnerFlairTemplateId'),
+    settings.get<string>('monthlyWinnerFlairTemplateId'),
   ]);
 
   const endDate = parseEndDate(competitionEndDate);
@@ -84,7 +91,10 @@ export const getCommunitySettings = async (): Promise<CommunitySettings> => {
       textOrNull(competitionWinnerFlair) ?? DEFAULT_COMPETITION_WINNER_FLAIR,
     monthlyWinnerFlair:
       textOrNull(monthlyWinnerFlair) ?? DEFAULT_MONTHLY_WINNER_FLAIR,
-    winnerFlairTemplateId: textOrNull(winnerFlairTemplateId),
+    competitionWinnerFlairTemplateId: textOrNull(
+      competitionWinnerFlairTemplateId
+    ),
+    monthlyWinnerFlairTemplateId: textOrNull(monthlyWinnerFlairTemplateId),
     rankingsIncludeText: rankingsIncludeText === true,
     competitionFlair: flair.length > 0 ? flair : null,
     competitionTheme: theme,

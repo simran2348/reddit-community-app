@@ -762,39 +762,48 @@
   gap: var(--space-2);
 }
 
-/* Top panel: Monthly / Theme switch next to that type's dropdown (stacked
-   on narrow phones). */
+/* Top panel: Monthly / Theme switch and that type's dropdown, always on one
+   line. Same dark see-through backdrop as Settings; the switch and dropdown
+   use rounded squares that follow the panel's corners (panel radius minus
+   its padding) instead of pills. */
 .winners__panel {
+  --winners-inner-radius: var(--radius-sm);
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
   flex: none;
+  min-width: 0;
   padding: var(--space-2);
   border-radius: var(--radius-lg);
-  background: rgb(0 0 0 / 0.55);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: rgb(0 0 0 / 0.95);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
-.winners__kinds {
-  flex: 1 1 170px;
+/* Sized to its labels so the dropdown gets the rest of the row. Doubled
+   class so it beats the shared .toggle-group pill, defined later. */
+.toggle-group.winners__kinds {
+  flex: none;
   border: 0;
-  background: rgb(255 255 255 / 0.1);
+  border-radius: var(--winners-inner-radius);
+  background: rgb(255 255 255 / 0.18);
 }
 
-.winners__kinds .toggle-group__option {
+.toggle-group.winners__kinds .toggle-group__option {
+  padding: 0 clamp(8px, 3vw, 14px);
+  border-radius: calc(var(--winners-inner-radius) - 3px);
   color: rgb(255 255 255 / 0.75);
 }
 
-.winners__kinds .toggle-group__option.is-selected {
+.toggle-group.winners__kinds .toggle-group__option.is-selected {
   color: #fff;
 }
 
-/* Native select (the phone's own picker), styled as a dark pill. */
+/* Native select (the phone's own picker), styled as a dark rounded square. */
 .winners__picker {
   position: relative;
-  flex: 1 1 170px;
+  flex: 1 1 0;
   min-width: 0;
 }
 
@@ -803,9 +812,9 @@
   min-height: 36px;
   overflow: hidden;
   white-space: nowrap;
-  padding: 0 36px 0 var(--space-4);
-  border: 1px solid rgb(255 255 255 / 0.12);
-  border-radius: var(--radius-pill);
+  padding: 0 32px 0 var(--space-3);
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: var(--winners-inner-radius);
   background: rgb(0 0 0 / 0.6);
   color: #fff;
   font: inherit;
@@ -832,7 +841,7 @@
 .winners__chevron {
   position: absolute;
   top: 50%;
-  right: 14px;
+  right: 10px;
   color: #ff6a33;
   pointer-events: none;
   transform: translateY(-50%);

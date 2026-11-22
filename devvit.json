@@ -58,16 +58,21 @@
         "helpText": "Flair given to the competition winner. This is a template: {theme} and {year} are placeholders, filled in when the winner is picked (e.g. theme Sunsets ending 2026-06-30 gives \"🏆 Sunsets 2026\"). You can change the text, emoji and order (e.g. \"{theme} {year} 🏆\"); changes apply to future winners only.",
         "defaultValue": "🏆 {theme} {year}"
       },
+      "competitionWinnerFlairTemplateId": {
+        "type": "string",
+        "label": "Competition winner flair template ID",
+        "helpText": "Optional. Leave empty for a plain text flair. To style the flair, create or pick a flair in Mod Tools → Post flair, choose Copy ID and paste it here. The competition winner gets that flair's colours and style, while its text is always replaced by the text above, so the flair's own text and emoji don't matter. Also needed if your subreddit only allows preset flairs. Changes apply to future winners only."
+      },
       "monthlyWinnerFlair": {
         "type": "string",
         "label": "Monthly top post flair",
         "helpText": "Flair given to each month's top image post on the 1st of the next month. This is a template: {month} and {year} are placeholders, filled in when the winner is picked (e.g. the top post of May 2026 gets \"⬆️ May 2026\"). You can change the text, emoji and order (e.g. \"Top of {month} {year}\"); changes apply to future winners only.",
         "defaultValue": "⬆️ {month} {year}"
       },
-      "winnerFlairTemplateId": {
+      "monthlyWinnerFlairTemplateId": {
         "type": "string",
-        "label": "Winner flair template ID (optional)",
-        "helpText": "If your subreddit only allows preset post flairs, paste a flair template ID here; the winner text above is applied on top of it."
+        "label": "Monthly top post flair template ID",
+        "helpText": "Optional. Leave empty for a plain text flair. To style the flair, create or pick a flair in Mod Tools → Post flair, choose Copy ID and paste it here. The monthly top post gets that flair's colours and style, while its text is always replaced by the text above, so the flair's own text and emoji don't matter. Also needed if your subreddit only allows preset flairs. Changes apply to future winners only."
       },
       "competitionFlair": {
         "type": "string",
