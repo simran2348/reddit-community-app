@@ -55,7 +55,7 @@
       "competitionWinnerFlair": {
         "type": "string",
         "label": "Competition winner flair",
-        "helpText": "Flair given to the competition winner. This is a template: {theme} and {year} are placeholders, filled in when the winner is picked (e.g. theme Sunsets ending 2026-06-30 gives \"🏆 Sunsets 2026\"). You can change the text, emoji and order (e.g. \"{theme} {year} 🏆\"); changes apply to future winners only.",
+        "helpText": "Flair given to the competition winner. This is a template: {theme} and {year} are placeholders (any capitalisation, e.g. {Theme}), filled in when the winner is picked (e.g. theme Sunsets ending 2026-06-30 gives \"🏆 Sunsets 2026\"). You can change the text, emoji and order (e.g. \"{theme} {year} 🏆\"); changes apply to future winners only.",
         "defaultValue": "🏆 {theme} {year}"
       },
       "competitionWinnerFlairTemplateId": {
@@ -66,7 +66,7 @@
       "monthlyWinnerFlair": {
         "type": "string",
         "label": "Monthly top post flair",
-        "helpText": "Flair given to each month's top image post on the 1st of the next month. This is a template: {month} and {year} are placeholders, filled in when the winner is picked (e.g. the top post of May 2026 gets \"⬆️ May 2026\"). You can change the text, emoji and order (e.g. \"Top of {month} {year}\"); changes apply to future winners only.",
+        "helpText": "Flair given to each month's top image post on the 1st of the next month. This is a template: {month} and {year} are placeholders (any capitalisation, e.g. {Month}), filled in when the winner is picked (e.g. the top post of May 2026 gets \"⬆️ May 2026\"). You can change the text, emoji and order (e.g. \"Top of {month} {year}\"); changes apply to future winners only.",
         "defaultValue": "⬆️ {month} {year}"
       },
       "monthlyWinnerFlairTemplateId": {
@@ -77,7 +77,7 @@
       "competitionFlair": {
         "type": "string",
         "label": "Photo competition post flair",
-        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition. Use a new flair for each competition: with the same flair, posts from earlier competitions are entered again.",
+        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition. You can reuse the same flair: each competition only counts posts made after the previous one ended.",
         "placeholder": "Photo Contest",
         "defaultValue": "Photo Contest"
       }

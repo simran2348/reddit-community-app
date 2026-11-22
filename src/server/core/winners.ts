@@ -2,10 +2,13 @@ import { reddit, redis } from '@devvit/web/server';
 import { isT3 } from '@devvit/web/shared';
 import type { WinnerEntry, WinnerRecord } from '../../shared/api';
 import { getAvatarUrl } from './avatars';
-import { cached } from './cache';
+import { cached, keySlug } from './cache';
 import { getFinalStandings } from './competition';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
 import { getCommunitySettings } from './settings';
+import type { CommunitySettings } from './settings';
+import { fillFlair, isExpiredMonthly } from './rules';
+import type { CompetitionWindow } from './rules';
 import { getSourceSubreddit } from './source';
 
 /**
@@ -19,16 +22,15 @@ import { getSourceSubreddit } from './source';
  */
 
 const RECORDS_KEY = 'winners:records';
+/**
+ * Hash: entry flair (slug) → when the last competition with that flair
+ * ended. The next competition with the same flair only counts posts made
+ * after it, so old entries aren't entered (or crowned) again.
+ */
+const ENDED_AT_KEY = 'competition:ended-at';
 const COMPETITION_TOP_COUNT = 10;
 /** Reddit's "month" is the last 30 days, so scan the year and filter dates. */
 const MONTHLY_SCAN_LIMIT = 1000;
-/**
- * Monthly winners are kept for a year: the month just finished plus the 12
- * before it (e.g. October 2026 stays until October 2027 is awarded alongside
- * it, and is removed when November 2027 is awarded). Competitions are kept.
- */
-const MONTHLY_KEEP_MONTHS = 12;
-const MONTHLY_ID = /^monthly:(\d{4})-(\d{2})$/;
 const MONTH_NAMES = [
   'January',
   'February',
@@ -44,12 +46,6 @@ const MONTH_NAMES = [
   'December',
 ];
 
-const fill = (template: string, values: Record<string, string>): string =>
-  template.replace(
-    /\{(\w+)\}/g,
-    (whole, name: string) => values[name] ?? whole
-  );
-
 const isWinnerRecord = (value: unknown): value is WinnerRecord =>
   typeof value === 'object' &&
   value !== null &&
@@ -57,23 +53,6 @@ const isWinnerRecord = (value: unknown): value is WinnerRecord =>
   'label' in value &&
   'entries' in value &&
   Array.isArray(value.entries);
-
-/** Months since year 0, so month ranges are simple subtraction. */
-const monthNumber = (year: number, monthIndex: number): number =>
-  year * 12 + monthIndex;
-
-/**
- * True for a monthly record older than a year (see MONTHLY_KEEP_MONTHS).
- * Competition records, and IDs that don't parse, are never expired.
- */
-const isExpiredMonthly = (id: string, now: Date): boolean => {
-  const match = id.match(MONTHLY_ID);
-  if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const lastFinished = monthNumber(now.getUTCFullYear(), now.getUTCMonth()) - 1;
-  return monthNumber(year, month - 1) < lastFinished - MONTHLY_KEEP_MONTHS;
-};
 
 /** Deletes monthly records older than a year; returns how many. */
 const pruneOldMonthly = async (): Promise<number> => {
@@ -158,6 +137,54 @@ export const listWinners = async (): Promise<WinnerRecord[]> => {
     .sort((a, b) => b.awardedAt.localeCompare(a.awardedAt));
 };
 
+const parseDate = (value: unknown): Date | null => {
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/**
+ * When the previous competition with this entry flair ended, or null for
+ * the first one. Competitions awarded before this was tracked fall back to
+ * their award time.
+ */
+const previousCompetitionEnd = async (
+  settings: CommunitySettings
+): Promise<Date | null> => {
+  const flairSlug = keySlug(settings.competitionFlair ?? 'all');
+  const saved = parseDate(await redis.hGet(ENDED_AT_KEY, flairSlug));
+  if (saved) return saved;
+
+  const prefix = `competition:${flairSlug}:`;
+  const currentId = `competition:${settings.competitionKey}`;
+  let latest: Date | null = null;
+  for (const [id, json] of Object.entries(await redis.hGetAll(RECORDS_KEY))) {
+    if (!id.startsWith(prefix) || id === currentId) continue;
+    try {
+      const parsed: unknown = JSON.parse(json);
+      const awardedAt =
+        typeof parsed === 'object' && parsed !== null && 'awardedAt' in parsed
+          ? parseDate(parsed.awardedAt)
+          : null;
+      if (awardedAt && (!latest || awardedAt > latest)) latest = awardedAt;
+    } catch {
+      // Ignore a corrupt record.
+    }
+  }
+  return latest;
+};
+
+/**
+ * Posts that count for the current competition: made after the previous
+ * competition with the same flair ended, up to this one's end.
+ */
+export const getCompetitionWindow = async (
+  settings: CommunitySettings
+): Promise<CompetitionWindow> => ({
+  after: await previousCompetitionEnd(settings),
+  until: settings.competitionEndsAt,
+});
+
 const hasRecord = async (id: string): Promise<boolean> =>
   (await redis.hGet(RECORDS_KEY, id)) !== undefined;
 
@@ -202,7 +229,12 @@ export const checkCompetitionWinner = async (): Promise<string> => {
   const id = `competition:${settings.competitionKey}`;
   if (await hasRecord(id)) return 'competition: already awarded';
 
-  const standings = await getFinalStandings(flair, COMPETITION_TOP_COUNT);
+  const window = await getCompetitionWindow(settings);
+  const standings = await getFinalStandings(
+    flair,
+    window,
+    COMPETITION_TOP_COUNT
+  );
   const year = String(endsAt.getUTCFullYear());
   const theme = settings.competitionTheme ?? flair ?? 'Photo competition';
   const label = `${theme} ${year}`;
@@ -225,12 +257,16 @@ export const checkCompetitionWinner = async (): Promise<string> => {
     awardedAt: new Date().toISOString(),
     entries,
   });
+  // The next competition with this flair starts counting from here.
+  await redis.hSet(ENDED_AT_KEY, {
+    [keySlug(flair ?? 'all')]: endsAt.toISOString(),
+  });
 
   const winner = entries[0];
   if (!winner) return `competition: "${label}" ended with no entries`;
   await applyFlair(
     winner.id,
-    fill(settings.competitionWinnerFlair, { theme, year }),
+    fillFlair(settings.competitionWinnerFlair, { theme, year }),
     settings.competitionWinnerFlairTemplateId
   );
   return `competition: "${label}" won by ${winner.id}`;
@@ -301,7 +337,7 @@ export const checkMonthlyWinner = async (): Promise<string> => {
   const settings = await getCommunitySettings();
   await applyFlair(
     winner.id,
-    fill(settings.monthlyWinnerFlair, { month, year }),
+    fillFlair(settings.monthlyWinnerFlair, { month, year }),
     settings.monthlyWinnerFlairTemplateId
   );
   return `monthly: ${label} won by ${winner.id}`;

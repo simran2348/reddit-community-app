@@ -9,28 +9,21 @@ import type {
   PreferencesResponse,
   WinnersResponse,
   RankingsResponse,
-  VoteCountsResponse,
-  VoteResponse,
 } from '../../shared/api';
 import { isRankingPeriod, parsePreferences } from '../../shared/api';
 import { getPreferences, savePreferences } from '../core/preferences';
-import { listWinners } from '../core/winners';
+import { getCompetitionWindow, listWinners } from '../core/winners';
 import { getCommunity, joinCommunity } from '../core/community';
 import { getRankings } from '../core/rankings';
 import { getCommunitySettings } from '../core/settings';
 import { getSourceSubreddit } from '../core/source';
-import {
-  getCompetition,
-  getVoteCounts,
-  submitVote,
-  VoteError,
-} from '../core/competition';
+import { CompetitionError, getCompetition } from '../core/competition';
 
 export const api = new Hono();
 
 /** Maps known errors to their status; anything else becomes a logged 500. */
 const handleError = (c: Context, error: unknown, fallback: string) => {
-  if (error instanceof VoteError) {
+  if (error instanceof CompetitionError) {
     return c.json<ErrorResponse>(
       { status: 'error', code: error.code, message: error.message },
       error.httpStatus
@@ -153,44 +146,12 @@ api.get('/rankings', async (c) => {
   }
 });
 
-/** GET /api/competition – entries, vote counts and the viewer's vote state. */
+/** GET /api/competition – entries (by Reddit upvotes) and the theme. */
 api.get('/competition', async (c) => {
   try {
-    return c.json<CompetitionResponse>(await getCompetition());
+    const window = await getCompetitionWindow(await getCommunitySettings());
+    return c.json<CompetitionResponse>(await getCompetition(window));
   } catch (error) {
     return handleError(c, error, 'Could not load competition entries.');
-  }
-});
-
-/** GET /api/competition/votes – live counts and the viewer's vote state. */
-api.get('/competition/votes', async (c) => {
-  try {
-    return c.json<VoteCountsResponse>(await getVoteCounts());
-  } catch (error) {
-    return handleError(c, error, 'Could not load votes.');
-  }
-});
-
-/** POST /api/competition/vote { postId } */
-api.post('/competition/vote', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    body = null;
-  }
-  const postId =
-    typeof body === 'object' && body !== null && 'postId' in body
-      ? body.postId
-      : undefined;
-
-  try {
-    return c.json<VoteResponse>(await submitVote(postId));
-  } catch (error) {
-    return handleError(
-      c,
-      error,
-      'Your vote could not be recorded. Please try again.'
-    );
   }
 });

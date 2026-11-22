@@ -36,7 +36,7 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
   - **End competition now** (moderator menu) ends the running competition early, with or without an end date. It asks for confirmation, then awards the winner straight away. The early end is stored in Redis (apps can't change settings), takes priority over a later end date, and hides the competition tab. To run another, set a new end date, or a new theme if there's no end date.
 - **Photo competition:**
   - Moderators can turn it on in the app settings.
-  - Image posts with a set flair become entries; leave the flair empty to include all image posts. Use a new flair for each competition: entries aren't limited by date, so with the same flair, posts from earlier competitions are entered again (and an old winner could win again).
+  - Image posts with a set flair become entries; leave the flair empty to include all image posts. The same flair can be reused: each competition only counts posts made **after the previous competition with that flair ended** (saved in Redis `competition:ended-at` when it's awarded) and **no later than its own end**, so old entries and late posts never count. The first competition with a flair counts all its posts.
   - **Theme info:** when mods set a theme, description or post link, a round orange ⓘ button sits in the competition screen's top-right corner (hidden while the modal is open). It opens a modal that grows from the centre (and shrinks back when closed) over a dark backdrop (the bottom nav stays visible): an orange THEME label centred above the theme name, the short description in orange quotes, then "For more info, visit the competition post" and an orange **Competition post** button (when the link is set). A tap outside the box or Esc closes it, and switching tabs closes it straight away (`components/ThemeInfo.tsx`).
   - **Cards look like Top posts:** the photo fills the card with the avatar, title and author on a bottom fade, plus the medal and, on the right, an orange tag with the post's Reddit upvotes. Avatars are looked up once per author and cached for a day (`server/core/avatars.ts`, shared with Top posts).
   - **Slideshow:** the same orange play button and full-post slideshow as Top posts, using the Settings interval. It sits under the theme ⓘ button when there is one.
@@ -56,9 +56,9 @@ A splash-only Reddit app that shows a subreddit's **top image posts** in a cover
 | Dev portal → app settings | Photo competition theme description | Short summary of the event (1-3 sentences, line breaks kept) |
 | Dev portal → app settings | Photo competition post link | Post with the full details and rules; shown as a button in the info box. Must be an https link (`https://` is added if missing) |
 | Dev portal → app settings | Photo competition end date | `YYYY-MM-DD`; the competition ends at the end of that day (UTC) and the winner is awarded automatically. Empty = no end |
-| Dev portal → app settings | Competition winner flair | Winner flair template; `{theme}` and `{year}` are filled in when the winner is picked (e.g. `🏆 Sunsets 2026`). Editable; changes apply to future winners only |
+| Dev portal → app settings | Competition winner flair | Winner flair template; `{theme}` and `{year}` are filled in when the winner is picked (any capitalisation: `{Theme}` works; unknown names are left as typed) (e.g. `🏆 Sunsets 2026`). Editable; changes apply to future winners only |
 | Dev portal → app settings | Competition winner flair template ID | Optional. A flair from Mod Tools → Post flair (Copy ID) that styles the competition winner flair: its colours are used, its text is replaced by the winner text. Empty = plain text flair. Also needed if the sub only allows preset flairs |
-| Dev portal → app settings | Monthly top post flair | Flair template for each month's top image post; `{month}` and `{year}` are filled in when the winner is picked (e.g. `⬆️ May 2026`). Editable; changes apply to future winners only |
+| Dev portal → app settings | Monthly top post flair | Flair template for each month's top image post; `{month}` and `{year}` are filled in when the winner is picked (any capitalisation) (e.g. `⬆️ May 2026`). Editable; changes apply to future winners only |
 | Dev portal → app settings | Monthly top post flair template ID | Same, for the monthly top post flair, so the two awards can look different (e.g. gold vs blue) |
 | Dev portal → app settings | Photo competition post flair | Flair that marks entries (empty = all image posts). Matching ignores emoji, punctuation, case and decorative fonts, so `Photography Contest` matches `📸 \| 𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝘆 𝗖𝗼𝗻𝘁𝗲𝘀𝘁` |
 | `devvit.json` → `dev.subreddit` | — | Subreddit used by `npm run dev` |
@@ -72,7 +72,7 @@ All UI icons come from [lucide-react](https://lucide.dev) (tree-shaken, so only 
 ```
 src/
   server/                 Devvit backend (Hono)
-    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/preferences, /api/winners, /api/competition(/votes|/vote)
+    routes/api.ts         /api/config, /api/rankings, /api/community(/join), /api/preferences, /api/winners, /api/competition
     routes/menu.ts        Moderator menu: create the post, run winner checks now, end competition now
     routes/forms.ts       Confirmation form for ending the competition early
     routes/triggers.ts    On install: create the post; post submit/flair/delete: update the competition index
@@ -80,7 +80,8 @@ src/
     core/winners.ts       Competition and monthly awards (flair + saved records)
     core/rankings.ts      Top image (and optionally text) posts + author avatars (Redis-cached)
     core/community.ts     Community banner/icon/members (cached) and Join
-    core/competition.ts   Entries, vote counts, server-side vote validation
+    core/competition.ts   Competition entry index and entries (by Reddit upvotes)
+    core/rules.ts         Pure rules (end dates, flair matching, placeholders, monthly cutoff, competition window), unit tested in rules.test.ts
     core/settings.ts      Reads subreddit settings
     core/source.ts        Source subreddit (the install subreddit)
     core/media.ts         Picks an image URL from a post
@@ -109,7 +110,6 @@ public/                   background.jpg, snoo.png, p1–p3.png (medals)
   - When shown, each entry is re-checked for an image and moderation state, so a removed, author-deleted (author `[deleted]`) or NSFW post drops out even if a trigger was missed, and a re-approved one comes back. Top posts skip author-deleted posts the same way.
   - The list (including upvote counts) is cached for 5 minutes and cleared by any trigger.
   - `[competition]` lines in `npx devvit logs` show the backfill, each indexed post, catch-up results, and fetch counts.
-- **In-app votes (unused):** the server still has the earlier vote endpoints (`/api/competition/votes`, `/vote`, Redis `HSETNX` per user and post), but the app no longer calls them; the competition now uses Reddit upvotes.
 - **Viewer preferences** (period, slideshow interval) are stored per Reddit account in Redis (`GET`/`PUT /api/preferences`, validated on the server) and mirrored in `localStorage`, which fails safely if unavailable.
 
 ## Commands
@@ -120,15 +120,11 @@ public/                   background.jpg, snoo.png, p1–p3.png (medals)
 | `npm run build` | Build client and server |
 | `npm run test:types` | Type check |
 | `npm run lint` | Lint |
-| `npm run test:unit` | Unit tests |
-| `npm run deploy` | Type check, lint, then upload a new version |
+| `npm run test` / `npm run test:unit` | Unit tests (`src/**/*.test.ts`, Node's built-in test runner) |
+| `npm run deploy` | Type check, lint, unit tests, then upload a new version |
 | `npm run launch` | Deploy and publish for review |
 | `npm run login` | Log the CLI into Reddit |
 
 `vite.config.ts` hides two harmless build warnings: lucide-react's `"use client"` directives (meant for React Server Components, which this app doesn't use) and protobufjs's `eval`.
 
 Requires Node 24+. CI (`.github/workflows/ci.yaml`) runs type check, lint, unit tests and build on every push to `main`.
-
-## Known leftovers
-
-These files are unused and safe to remove: `index.css`, `components/InfoPopover.tsx`, `components/AppHeader.tsx`, `components/TimeFilter.tsx`, `components/MainNavigation.tsx`, `components/SettingsButton.tsx`, `components/VoteButton.tsx`, and `services/votingService.ts` (old in-app voting).

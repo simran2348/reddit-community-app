@@ -81,24 +81,8 @@ export type CompetitionEntry = {
   imageWidth: number | null;
   imageHeight: number | null;
   flair: string;
-  voteCount: number;
   createdAt: string;
   postUrl: string;
-};
-
-export type CompetitionVote = {
-  id: string;
-  postId: string;
-  userId: string;
-  createdAt: string;
-};
-
-export type ViewerVoteState = {
-  isLoggedIn: boolean;
-  /** Post IDs the current user has already voted for. */
-  votedPostIds: string[];
-  /** Post IDs the current user authored (cannot vote for their own photo). */
-  ownPostIds: string[];
 };
 
 /** Set by mods in the app settings; shown in the competition's info box. */
@@ -116,37 +100,14 @@ export type CompetitionResponse = {
   flair: string | null;
   theme: CompetitionTheme;
   entries: CompetitionEntry[];
-  viewer: ViewerVoteState;
 };
 
-export type VoteCountsResponse = {
-  counts: Record<string, number>;
-  viewer: ViewerVoteState;
-};
-
-export type VoteRequest = {
-  postId: string;
-};
-
-export type VoteResponse = {
-  status: 'ok';
-  postId: string;
-  voteCount: number;
-  viewer: ViewerVoteState;
-};
-
-export type VoteErrorCode =
-  | 'NOT_LOGGED_IN'
-  | 'INVALID_REQUEST'
-  | 'COMPETITION_DISABLED'
-  | 'NOT_ELIGIBLE'
-  | 'OWN_ENTRY'
-  | 'ALREADY_VOTED'
-  | 'SERVER_ERROR';
+export type ErrorCode =
+  'NOT_LOGGED_IN' | 'INVALID_REQUEST' | 'COMPETITION_DISABLED' | 'SERVER_ERROR';
 
 export type ErrorResponse = {
   status: 'error';
-  code: VoteErrorCode;
+  code: ErrorCode;
   message: string;
 };
 
