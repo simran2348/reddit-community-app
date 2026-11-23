@@ -6,6 +6,7 @@ import type {
   CompetitionResponse,
   ErrorCode,
 } from '../../shared/api';
+import { getAnnouncementPostIds } from './announcements';
 import { getAvatarUrls } from './avatars';
 import { cached, keySlug } from './cache';
 import { getPostImage, hiddenReason, isHiddenPost, toPostUrl } from './media';
@@ -311,8 +312,13 @@ const loadEntries = async (flair: Flair): Promise<CachedEntry[]> => {
     `[competition] index=${ids.length} fetched=${posts.length} pruned=${missing.length}`
   );
 
+  // With no entry flair every image post counts, so skip the app's own
+  // winner announcements (they repost winning photos).
+  const announcements = await getAnnouncementPostIds();
   const entries = posts
-    .filter((post) => isEligiblePost(post, flair))
+    .filter(
+      (post) => isEligiblePost(post, flair) && !announcements.has(post.id)
+    )
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map(toCachedEntry)
     .filter((entry): entry is CachedEntry => entry !== null);

@@ -2,6 +2,14 @@ import { redis, settings } from '@devvit/web/server';
 import { keySlug } from './cache';
 import { earliest, parseEndDate, textOrNull } from './rules';
 
+/** A winner announcement post (off unless a mod switches it on). */
+export type AnnouncementSettings = {
+  enabled: boolean;
+  /** Templates; {user}, {post}, {title}, {year} and {theme}/{month}. */
+  title: string;
+  body: string;
+};
+
 export type CommunitySettings = {
   /** Mod toggle AND the competition hasn't ended (end date or ended early). */
   competitionEnabled: boolean;
@@ -31,6 +39,9 @@ export type CommunitySettings = {
    */
   competitionWinnerFlairTemplateId: string | null;
   monthlyWinnerFlairTemplateId: string | null;
+  /** Announcement posts for competition and monthly winners. */
+  competitionAnnouncement: AnnouncementSettings;
+  monthlyAnnouncement: AnnouncementSettings;
   /** Top posts also ranks text posts (never the competition). */
   rankingsIncludeText: boolean;
   /** Competition theme name and description; null when not set. */
@@ -69,6 +80,11 @@ export const getCommunitySettings = async (): Promise<CommunitySettings> => {
     settings.get<string>('monthlyWinnerFlairTemplateId'),
   ]);
 
+  const [competitionAnnouncement, monthlyAnnouncement] = await Promise.all([
+    readAnnouncement('competition', DEFAULT_COMPETITION_ANNOUNCEMENT),
+    readAnnouncement('monthly', DEFAULT_MONTHLY_ANNOUNCEMENT),
+  ]);
+
   const endDate = parseEndDate(competitionEndDate);
 
   const flair =
@@ -96,6 +112,8 @@ export const getCommunitySettings = async (): Promise<CommunitySettings> => {
       competitionWinnerFlairTemplateId
     ),
     monthlyWinnerFlairTemplateId: textOrNull(monthlyWinnerFlairTemplateId),
+    competitionAnnouncement,
+    monthlyAnnouncement,
     rankingsIncludeText: rankingsIncludeText === true,
     competitionFlair: flair.length > 0 ? flair : null,
     competitionTheme: theme,
@@ -155,6 +173,39 @@ const httpsUrlOrNull = (value: string | undefined): string | null => {
   } catch {
     return null;
   }
+};
+
+export const DEFAULT_COMPETITION_ANNOUNCEMENT = {
+  title: '🏆 Congrats {user} for winning the {theme} {year} photo contest!',
+  body:
+    'Congratulations {user}, the winner of our {theme} {year} photo contest! 🎉\n\n' +
+    'Winning post: {post}\n\nThanks to everyone who took part.',
+};
+export const DEFAULT_MONTHLY_ANNOUNCEMENT = {
+  title: '⬆️ Congrats {user} for the top post of {month} {year}!',
+  body:
+    'Congratulations {user}, your photo was the most upvoted post of {month} {year}! 🎉\n\n' +
+    'Top post: {post}',
+};
+
+/**
+ * Reads one announcement's settings ({kind}AnnouncementEnabled / Title /
+ * Body). Blank title or body falls back to the default text.
+ */
+const readAnnouncement = async (
+  kind: 'competition' | 'monthly',
+  defaults: { title: string; body: string }
+): Promise<AnnouncementSettings> => {
+  const [enabled, title, body] = await Promise.all([
+    settings.get<boolean>(`${kind}AnnouncementEnabled`),
+    settings.get<string>(`${kind}AnnouncementTitle`),
+    settings.get<string>(`${kind}AnnouncementBody`),
+  ]);
+  return {
+    enabled: enabled === true,
+    title: textOrNull(title) ?? defaults.title,
+    body: textOrNull(body) ?? defaults.body,
+  };
 };
 
 export const DEFAULT_COMPETITION_WINNER_FLAIR = '🏆 {theme} {year}';

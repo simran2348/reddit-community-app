@@ -19,7 +19,7 @@
       "competitionEnabled": {
         "type": "boolean",
         "label": "Enable photo competition",
-        "helpText": "Shows the Photo Competition tab so members can vote on photos.",
+        "helpText": "Shows the Photo Competition tab. Entries are ranked by their Reddit upvotes.",
         "defaultValue": false
       },
       "rankingsIncludeText": {
@@ -33,6 +33,13 @@
         "label": "Photo competition theme",
         "helpText": "Short theme name shown in the competition's info box (e.g. Monsoon Moods). Leave empty to hide it.",
         "placeholder": "Monsoon Moods"
+      },
+      "competitionFlair": {
+        "type": "string",
+        "label": "Photo competition post flair",
+        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition. You can reuse the same flair: each competition only counts posts made after the previous one ended.",
+        "placeholder": "Photo Contest",
+        "defaultValue": "Photo Contest"
       },
       "competitionThemeDescription": {
         "type": "paragraph",
@@ -63,6 +70,24 @@
         "label": "Competition winner flair template ID",
         "helpText": "Optional. Leave empty for a plain text flair. To style the flair, create or pick a flair in Mod Tools → Post flair, choose Copy ID and paste it here. The competition winner gets that flair's colours and style, while its text is always replaced by the text above, so the flair's own text and emoji don't matter. Also needed if your subreddit only allows preset flairs. Changes apply to future winners only."
       },
+      "competitionAnnouncementEnabled": {
+        "type": "boolean",
+        "label": "Post a competition winner announcement",
+        "helpText": "When a competition winner is decided, the app posts an announcement in the subreddit: an image post of the winning photo with the title below, plus a pinned comment with the body below. Off by default. If the photo can't be uploaded, a text post with a link to the photo is made instead.",
+        "defaultValue": false
+      },
+      "competitionAnnouncementTitle": {
+        "type": "string",
+        "label": "Competition winner announcement title",
+        "helpText": "Title of the announcement post (max 300 characters). Placeholders (any capitalisation): {user} = the winner as u/name (links to their profile), {post} = link to the winning post, {title} = the winning post's title, {year}, and {theme}. Leave empty to use the default.",
+        "defaultValue": "🏆 Congrats {user} for winning the {theme} {year} photo contest!"
+      },
+      "competitionAnnouncementBody": {
+        "type": "paragraph",
+        "label": "Competition winner announcement body",
+        "helpText": "Text of the pinned comment (Reddit markdown). Placeholders (any capitalisation): {user} = the winner as u/name (links to their profile), {post} = link to the winning post, {title} = the winning post's title, {year}, and {theme}. {user} and {post} always appear: if you leave either out, a 'Winner: u/name' or 'Winning post: link' line is added at the end. Leave empty to use the default.",
+        "defaultValue": "Congratulations {user}, the winner of our {theme} {year} photo contest! 🎉\n\nWinning post: {post}\n\nThanks to everyone who took part."
+      },
       "monthlyWinnerFlair": {
         "type": "string",
         "label": "Monthly top post flair",
@@ -74,12 +99,23 @@
         "label": "Monthly top post flair template ID",
         "helpText": "Optional. Leave empty for a plain text flair. To style the flair, create or pick a flair in Mod Tools → Post flair, choose Copy ID and paste it here. The monthly top post gets that flair's colours and style, while its text is always replaced by the text above, so the flair's own text and emoji don't matter. Also needed if your subreddit only allows preset flairs. Changes apply to future winners only."
       },
-      "competitionFlair": {
+      "monthlyAnnouncementEnabled": {
+        "type": "boolean",
+        "label": "Post a monthly top post announcement",
+        "helpText": "When the monthly top post is decided, the app posts an announcement in the subreddit: an image post of the winning photo with the title below, plus a pinned comment with the body below. Off by default. If the photo can't be uploaded, a text post with a link to the photo is made instead.",
+        "defaultValue": false
+      },
+      "monthlyAnnouncementTitle": {
         "type": "string",
-        "label": "Photo competition post flair",
-        "helpText": "Image posts with this flair become competition entries (e.g. Contest, Photo Contest). Leave empty to include every image post. Changing it starts a new competition. You can reuse the same flair: each competition only counts posts made after the previous one ended.",
-        "placeholder": "Photo Contest",
-        "defaultValue": "Photo Contest"
+        "label": "Monthly top post announcement title",
+        "helpText": "Title of the announcement post (max 300 characters). Placeholders (any capitalisation): {user} = the winner as u/name (links to their profile), {post} = link to the winning post, {title} = the winning post's title, {year}, and {month}. Leave empty to use the default.",
+        "defaultValue": "⬆️ Congrats {user} for the top post of {month} {year}!"
+      },
+      "monthlyAnnouncementBody": {
+        "type": "paragraph",
+        "label": "Monthly top post announcement body",
+        "helpText": "Text of the pinned comment (Reddit markdown). Placeholders (any capitalisation): {user} = the winner as u/name (links to their profile), {post} = link to the winning post, {title} = the winning post's title, {year}, and {month}. {user} and {post} always appear: if you leave either out, a 'Winner: u/name' or 'Winning post: link' line is added at the end. Leave empty to use the default.",
+        "defaultValue": "Congratulations {user}, your photo was the most upvoted post of {month} {year}! 🎉\n\nTop post: {post}"
       }
     }
   },
@@ -87,7 +123,8 @@
     "reddit": {
       "enable": true,
       "asUser": ["SUBSCRIBE_TO_SUBREDDIT"]
-    }
+    },
+    "media": true
   },
   "menu": {
     "items": [

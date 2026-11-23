@@ -1,13 +1,18 @@
 import { reddit, redis } from '@devvit/web/server';
 import { isT3 } from '@devvit/web/shared';
 import type { WinnerEntry, WinnerRecord } from '../../shared/api';
+import {
+  announceWinner,
+  finishPendingAnnouncements,
+  getAnnouncementPostIds,
+} from './announcements';
 import { getAvatarUrl } from './avatars';
 import { cached, keySlug } from './cache';
 import { getFinalStandings } from './competition';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
 import { getCommunitySettings } from './settings';
 import type { CommunitySettings } from './settings';
-import { fillFlair, isExpiredMonthly } from './rules';
+import { fillTemplate, isExpiredMonthly } from './rules';
 import type { CompetitionWindow } from './rules';
 import { getSourceSubreddit } from './source';
 
@@ -266,10 +271,16 @@ export const checkCompetitionWinner = async (): Promise<string> => {
   if (!winner) return `competition: "${label}" ended with no entries`;
   await applyFlair(
     winner.id,
-    fillFlair(settings.competitionWinnerFlair, { theme, year }),
+    fillTemplate(settings.competitionWinnerFlair, { theme, year }),
     settings.competitionWinnerFlairTemplateId
   );
-  return `competition: "${label}" won by ${winner.id}`;
+  const announced = await announceWinner(
+    id,
+    settings.competitionAnnouncement,
+    winner,
+    { theme, year }
+  );
+  return `competition: "${label}" won by ${winner.id}, ${announced}`;
 };
 
 /** Awards last calendar month's top image post (once per month). */
@@ -290,6 +301,8 @@ export const checkMonthlyWinner = async (): Promise<string> => {
       limit: MONTHLY_SCAN_LIMIT,
     })
     .all();
+  // The app's own announcement posts repost winning photos; never pick them.
+  const announcements = await getAnnouncementPostIds();
   const top = posts
     .filter((post) => {
       const time = post.createdAt.getTime();
@@ -298,6 +311,7 @@ export const checkMonthlyWinner = async (): Promise<string> => {
         time < end.getTime() &&
         !isHiddenPost(post) &&
         !post.stickied &&
+        !announcements.has(post.id) &&
         getPostImage(post) !== null
       );
     })
@@ -337,10 +351,16 @@ export const checkMonthlyWinner = async (): Promise<string> => {
   const settings = await getCommunitySettings();
   await applyFlair(
     winner.id,
-    fillFlair(settings.monthlyWinnerFlair, { month, year }),
+    fillTemplate(settings.monthlyWinnerFlair, { month, year }),
     settings.monthlyWinnerFlairTemplateId
   );
-  return `monthly: ${label} won by ${winner.id}`;
+  const announced = await announceWinner(
+    id,
+    settings.monthlyAnnouncement,
+    winner,
+    { month, year }
+  );
+  return `monthly: ${label} won by ${winner.id}, ${announced}`;
 };
 
 /** Both checks; each is safe to run repeatedly (one award per period). */
@@ -353,6 +373,11 @@ export const runWinnerChecks = async (): Promise<string[]> => {
       console.error('[winners] check failed', error);
       results.push(`${check.name}: failed (see logs)`);
     }
+  }
+  try {
+    await finishPendingAnnouncements();
+  } catch (error) {
+    console.error('[announce] finishing pending posts failed', error);
   }
   try {
     const removed = await pruneOldMonthly();

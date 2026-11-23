@@ -61,11 +61,12 @@ export const flairMatches = (
   (typeof postFlair === 'string' && sameFlair(postFlair, configured));
 
 /**
- * Fills {placeholders} in a winner flair template. Names ignore case and
- * inner spaces ({Theme}, {ThEmE}, { theme } all work); unknown ones are left
- * as typed so a typo is visible rather than silently dropped.
+ * Fills {placeholders} in a template (winner flairs, announcement posts).
+ * Names ignore case and inner spaces ({Theme}, {ThEmE}, { theme } all work);
+ * unknown ones are left as typed so a typo is visible rather than silently
+ * dropped.
  */
-export const fillFlair = (
+export const fillTemplate = (
   template: string,
   values: Record<string, string>
 ): string =>
@@ -73,6 +74,43 @@ export const fillFlair = (
     /\{\s*(\w+)\s*\}/g,
     (whole, name: string) => values[name.toLowerCase()] ?? whole
   );
+
+/** True when the template uses {name} (any capitalisation / spacing). */
+const usesPlaceholder = (template: string, name: string): boolean =>
+  new RegExp(`\\{\\s*${name}\\s*\\}`, 'i').test(template);
+
+/** Reddit's limit for post titles. */
+export const TITLE_MAX_LENGTH = 300;
+
+/** Filled-in announcement title, cut to Reddit's 300-character limit. */
+export const fillAnnouncementTitle = (
+  template: string,
+  values: Record<string, string>
+): string => {
+  const title = fillTemplate(template, values).trim();
+  return title.length > TITLE_MAX_LENGTH
+    ? `${title.slice(0, TITLE_MAX_LENGTH - 1).trimEnd()}…`
+    : title;
+};
+
+/**
+ * Filled-in announcement body. {user} and {post} must always reach the
+ * post: if the mods' text leaves either out, a "Winner: …" / "Winning post:
+ * …" line is added at the end.
+ */
+export const fillAnnouncementBody = (
+  template: string,
+  values: { user: string; post: string } & Record<string, string>
+): string => {
+  const extra: string[] = [];
+  if (!usesPlaceholder(template, 'user')) extra.push(`Winner: ${values.user}`);
+  if (!usesPlaceholder(template, 'post')) {
+    extra.push(`Winning post: ${values.post}`);
+  }
+  return [fillTemplate(template, values).trim(), ...extra]
+    .filter((part) => part.length > 0)
+    .join('\n\n');
+};
 
 /**
  * Monthly winners are kept for a year: the month just finished plus the 12

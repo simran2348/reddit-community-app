@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   earliest,
-  fillFlair,
+  fillAnnouncementBody,
+  fillAnnouncementTitle,
+  fillTemplate,
   flairMatches,
   isExpiredMonthly,
   isInWindow,
@@ -94,28 +96,28 @@ void describe('flairMatches', () => {
   });
 });
 
-void describe('fillFlair', () => {
+void describe('fillTemplate', () => {
   void it('fills placeholders in any order', () => {
     assert.equal(
-      fillFlair('🏆 {theme} {year}', { theme: 'Sunsets', year: '2026' }),
+      fillTemplate('🏆 {theme} {year}', { theme: 'Sunsets', year: '2026' }),
       '🏆 Sunsets 2026'
     );
     assert.equal(
-      fillFlair('{year} {theme} 🏆', { theme: 'Sunsets', year: '2026' }),
+      fillTemplate('{year} {theme} 🏆', { theme: 'Sunsets', year: '2026' }),
       '2026 Sunsets 🏆'
     );
   });
 
   void it('ignores case and inner spaces in placeholder names', () => {
     assert.equal(
-      fillFlair('{Month} { YEAR }', { month: 'October', year: '2026' }),
+      fillTemplate('{Month} { YEAR }', { month: 'October', year: '2026' }),
       'October 2026'
     );
   });
 
   void it('leaves unknown placeholders as typed', () => {
     assert.equal(
-      fillFlair('{yr} {theme}', { theme: 'Sunsets' }),
+      fillTemplate('{yr} {theme}', { theme: 'Sunsets' }),
       '{yr} Sunsets'
     );
   });
@@ -180,5 +182,56 @@ void describe('isInWindow', () => {
 
   void it('rejects unreadable dates', () => {
     assert.equal(isInWindow('not a date', { after: null, until: null }), false);
+  });
+});
+
+void describe('fillAnnouncementTitle', () => {
+  void it('fills placeholders', () => {
+    assert.equal(
+      fillAnnouncementTitle('Congrats {user} for {Theme} {year}', {
+        user: 'u/jane',
+        theme: 'Sunsets',
+        year: '2026',
+      }),
+      'Congrats u/jane for Sunsets 2026'
+    );
+  });
+
+  void it("cuts titles to Reddit's 300 characters", () => {
+    const title = fillAnnouncementTitle('x'.repeat(400), {});
+    assert.equal(title.length, 300);
+    assert.ok(title.endsWith('…'));
+  });
+});
+
+void describe('fillAnnouncementBody', () => {
+  const values = { user: 'u/jane', post: 'https://reddit.com/p/1' };
+
+  void it('fills {user} and {post} where the mods put them', () => {
+    assert.equal(
+      fillAnnouncementBody('Well done {User}! See { post }', values),
+      'Well done u/jane! See https://reddit.com/p/1'
+    );
+  });
+
+  void it('adds the winner when {user} is missing', () => {
+    assert.equal(
+      fillAnnouncementBody('Great photo: {post}', values),
+      'Great photo: https://reddit.com/p/1\n\nWinner: u/jane'
+    );
+  });
+
+  void it('adds the post link when {post} is missing', () => {
+    assert.equal(
+      fillAnnouncementBody('Congrats {user}!', values),
+      'Congrats u/jane!\n\nWinning post: https://reddit.com/p/1'
+    );
+  });
+
+  void it('adds both when neither is used', () => {
+    assert.equal(
+      fillAnnouncementBody('Thanks everyone', values),
+      'Thanks everyone\n\nWinner: u/jane\n\nWinning post: https://reddit.com/p/1'
+    );
   });
 });

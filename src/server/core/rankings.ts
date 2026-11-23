@@ -10,6 +10,7 @@ import { cached } from './cache';
 import { getPostImage, isHiddenPost, toPostUrl } from './media';
 import { getCommunitySettings } from './settings';
 import { getSourceSubreddit } from './source';
+import { getAnnouncementPostIds } from './announcements';
 
 const TOP_COUNT = 10;
 const SCAN_LIMIT = 100;
@@ -67,9 +68,14 @@ const loadRankings = async (
     })
     .all();
 
+  // The app's winner announcements repost winning photos; leave them out.
+  const announcements = await getAnnouncementPostIds();
   const top: Ranked[] = [];
   const sorted = posts
-    .filter((post) => !isHiddenPost(post) && !post.stickied)
+    .filter(
+      (post) =>
+        !isHiddenPost(post) && !post.stickied && !announcements.has(post.id)
+    )
     .sort((a, b) => b.score - a.score);
 
   for (const post of sorted) {
