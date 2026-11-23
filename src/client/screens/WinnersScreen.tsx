@@ -26,7 +26,14 @@ const KINDS: readonly { value: Kind; label: string }[] = [
 ];
 
 const getKey = (entry: WinnerEntry) => entry.id;
-const renderEntry = (entry: WinnerEntry) => <WinnerCard entry={entry} />;
+// Competitions rank their top 10 with medals; a month has a single winner,
+// so its card has no medal.
+const renderCompetitionEntry = (entry: WinnerEntry) => (
+  <WinnerCard entry={entry} showMedal />
+);
+const renderMonthlyEntry = (entry: WinnerEntry) => (
+  <WinnerCard entry={entry} showMedal={false} />
+);
 
 /**
  * Winners: a top panel with a Monthly / Theme switch and a dropdown of that
@@ -180,7 +187,11 @@ export const WinnersScreen = () => {
                 key={selected.id}
                 items={selected.entries}
                 getKey={getKey}
-                renderItem={renderEntry}
+                renderItem={
+                  selected.kind === 'competition'
+                    ? renderCompetitionEntry
+                    : renderMonthlyEntry
+                }
                 label="winner"
               />
             ) : (

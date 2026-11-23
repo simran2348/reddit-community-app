@@ -103,7 +103,12 @@ export type CompetitionResponse = {
 };
 
 export type ErrorCode =
-  'NOT_LOGGED_IN' | 'INVALID_REQUEST' | 'COMPETITION_DISABLED' | 'SERVER_ERROR';
+  | 'NOT_LOGGED_IN'
+  | 'INVALID_REQUEST'
+  | 'COMPETITION_DISABLED'
+  /** Reddit refused to join for the user (e.g. permission not granted). */
+  | 'JOIN_UNAVAILABLE'
+  | 'SERVER_ERROR';
 
 export type ErrorResponse = {
   status: 'error';

@@ -121,7 +121,18 @@ api.post('/community/join', async (c) => {
     }
     return c.json<JoinResponse>({ joined: true });
   } catch (error) {
-    return handleError(c, error, 'Could not join the community.');
+    // Joining runs as the user (asUser SUBSCRIBE_TO_SUBREDDIT); Reddit can
+    // refuse it (permission not granted yet, unsupported client, ...). The
+    // client then opens the subreddit so they can join with Reddit's button.
+    console.error('[community] join failed', error);
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        code: 'JOIN_UNAVAILABLE',
+        message: 'Joining from here is not available right now.',
+      },
+      503
+    );
   }
 });
 

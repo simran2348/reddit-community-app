@@ -1,6 +1,7 @@
 import { context, reddit, redis } from '@devvit/web/server';
 import type { CommunityResponse } from '../../shared/api';
 import { cached, keySlug } from './cache';
+import { getCustomHeader } from './customHeader';
 import { getSourceSubreddit } from './source';
 
 const INFO_CACHE_TTL_SECONDS = 30 * 60;
@@ -63,10 +64,20 @@ export const getCommunity = async (): Promise<CommunityResponse> => {
     () => loadDetails(subreddit)
   );
   const { userId } = context;
-  const joined = userId
-    ? Boolean(await redis.get(joinedKey(subreddit, userId)))
-    : false;
-  return { ...details, isLoggedIn: Boolean(userId), joined };
+  const [joined, custom] = await Promise.all([
+    userId
+      ? redis.get(joinedKey(subreddit, userId)).then(Boolean)
+      : Promise.resolve(false),
+    getCustomHeader(),
+  ]);
+  return {
+    ...details,
+    // The mods' own banner / icon (if set) replace the subreddit's.
+    bannerUrl: custom.bannerUrl ?? details.bannerUrl,
+    iconUrl: custom.iconUrl ?? details.iconUrl,
+    isLoggedIn: Boolean(userId),
+    joined,
+  };
 };
 
 /**

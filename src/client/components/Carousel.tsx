@@ -92,6 +92,9 @@ export const Carousel = <T,>({
   };
   const onPointerLeave = () => setHovered(false);
 
+  // One card: nothing to page through, so no arrows or "1 / 1" tag.
+  const single = items.length <= 1;
+
   return (
     <div className="carousel">
       <div
@@ -138,9 +141,11 @@ export const Carousel = <T,>({
                   </div>
                   {/* Each card carries its own position tag, so it moves
                       with the image and fades in when the card is in front. */}
-                  <span className="card-position" aria-hidden="true">
-                    {i + 1} / {items.length}
-                  </span>
+                  {!single && (
+                    <span className="card-position" aria-hidden="true">
+                      {i + 1} / {items.length}
+                    </span>
+                  )}
                   {isNeighbour && (
                     <button
                       type="button"
@@ -160,13 +165,15 @@ export const Carousel = <T,>({
         {renderActions && (
           <div className="carousel__actions">{renderActions(index)}</div>
         )}
-        <CarouselControls
-          canPrev={carousel.canPrev}
-          canNext={carousel.canNext}
-          onPrev={carousel.prev}
-          onNext={carousel.next}
-          label={label}
-        />
+        {!single && (
+          <CarouselControls
+            canPrev={carousel.canPrev}
+            canNext={carousel.canNext}
+            onPrev={carousel.prev}
+            onNext={carousel.next}
+            label={label}
+          />
+        )}
         {/* Screen-reader announcement of the current position. */}
         <p className="visually-hidden" aria-live="polite">
           {items.length === 0

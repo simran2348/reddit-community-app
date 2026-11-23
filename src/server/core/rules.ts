@@ -161,3 +161,26 @@ export const isInWindow = (
     (window.until === null || time <= window.until.getTime())
   );
 };
+
+/**
+ * Images uploaded through a Devvit form are hosted by Reddit (i.redd.it and
+ * similar). Only those are accepted for the custom header, so nothing from
+ * an outside site is ever loaded in the app.
+ */
+export const isRedditImageUrl = (value: unknown): value is string => {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return (
+      url.protocol === 'https:' &&
+      (host === 'redd.it' ||
+        host.endsWith('.redd.it') ||
+        host === 'redditmedia.com' ||
+        host.endsWith('.redditmedia.com') ||
+        host.endsWith('.redditstatic.com'))
+    );
+  } catch {
+    return false;
+  }
+};

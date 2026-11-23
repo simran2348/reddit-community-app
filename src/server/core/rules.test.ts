@@ -8,6 +8,7 @@ import {
   flairMatches,
   isExpiredMonthly,
   isInWindow,
+  isRedditImageUrl,
   parseEndDate,
   textOrNull,
 } from './rules.ts';
@@ -233,5 +234,34 @@ void describe('fillAnnouncementBody', () => {
       fillAnnouncementBody('Thanks everyone', values),
       'Thanks everyone\n\nWinner: u/jane\n\nWinning post: https://reddit.com/p/1'
     );
+  });
+});
+
+void describe('isRedditImageUrl', () => {
+  void it('accepts Reddit-hosted uploads', () => {
+    for (const url of [
+      'https://i.redd.it/abc123.gif',
+      'https://preview.redd.it/x.png?width=640&s=1',
+      'https://styles.redditmedia.com/t5_1/styles/banner.jpg',
+      'https://www.redditstatic.com/icon.png',
+    ]) {
+      assert.equal(isRedditImageUrl(url), true, url);
+    }
+  });
+
+  void it('rejects other sites, http and non-strings', () => {
+    for (const url of [
+      'https://example.com/a.gif',
+      'https://i.redd.it.evil.com/a.gif',
+      'https://notredd.it/a.png',
+      'http://i.redd.it/a.gif',
+      'javascript:alert(1)',
+      '',
+      'not a url',
+    ]) {
+      assert.equal(isRedditImageUrl(url), false, url);
+    }
+    assert.equal(isRedditImageUrl(undefined), false);
+    assert.equal(isRedditImageUrl(42), false);
   });
 });

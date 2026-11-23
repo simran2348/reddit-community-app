@@ -6,6 +6,7 @@ import type { CommunityResponse } from '../../shared/api';
 import { formatCount } from '../format';
 import { NoBannerPattern } from './NoBannerPattern';
 import { fetchCommunity, joinCommunity } from '../services/communityService';
+import { ApiError } from '../services/http';
 
 type Status =
   | { kind: 'loading' }
@@ -82,6 +83,13 @@ export const CommunityCard = memo(({ children }: { children: ReactNode }) => {
       });
       showToast(`Welcome to r/${status.data.name}!`);
     } catch (error) {
+      if (error instanceof ApiError && error.code === 'JOIN_UNAVAILABLE') {
+        // Reddit wouldn't let the app join for them: open the subreddit,
+        // where Reddit's own Join button works.
+        showToast(`Opening r/${status.data.name} so you can join there`);
+        navigateTo(`https://www.reddit.com/r/${status.data.name}/`);
+        return;
+      }
       showToast(
         error instanceof Error ? error.message : 'Could not join. Try again.'
       );
